@@ -24,6 +24,25 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class FlowingFluidMixin {
 
 
+    /**
+     * PORT-26.3: fluids also never leave the plot's bounds, downwards included. On 26.3 a fluid falls through
+     * {@code canMaybePassThrough} (sideways spreading still goes through {@code canPassThrough}, checked below), so water
+     * that reached a cell above open air fell out of the bottom of the ship and down the whole plot. Each block of that
+     * falling column expanded the plot's bounds: the ship's world bounds reached far below it, its sky-light sample (taken at
+     * the bounds' centre) was underground, and the whole ship, hull and block entities, was drawn without sky light.
+     */
+    @Inject(at = @At("HEAD"), method = "canMaybePassThrough", cancellable = true)
+    private void sable$stayInPlot(final BlockGetter getter, final BlockPos fromPos, final BlockState fromState, final Direction direction,
+                                  final BlockPos toPos, final BlockState toState, final FluidState toFluidState, final CallbackInfoReturnable<Boolean> cir) {
+        if (!(getter instanceof final Level level)) {
+            return;
+        }
+        final SubLevel subLevel = Sable.HELPER.getContaining(level, Vec3.atCenterOf(fromPos));
+        if (subLevel != null && !subLevel.getPlot().getBoundingBox().contains(toPos.getX(), toPos.getY(), toPos.getZ())) {
+            cir.setReturnValue(false);
+        }
+    }
+
     @Inject(at = @At("HEAD"), method = "canPassThrough", cancellable = true)
     private void sable$canPassThrough(final BlockGetter pLevel, final Fluid pFluid, final BlockPos pFromPos, final BlockState pFromBlockState, final Direction pDirection, final BlockPos pToPos, final BlockState pToBlockState, final FluidState pToFluidState, final CallbackInfoReturnable<Boolean> cir) {
         if (!(pLevel instanceof final Level level)) {

@@ -53,6 +53,10 @@ public final class FabricSimInventoryService implements SimInventoryService {
             final BiFunction<T, Direction, AbstractContainer> getter) {
         return type -> ItemStorage.SIDED.registerForBlockEntity((blockEntity, direction) -> {
             final AbstractContainer inventory = getter.apply(blockEntity, direction);
+            if (inventory instanceof final dev.simulated_team.simulated.fabric.transfer.FabricInventoryLoaderWrapper wrapper) {
+                // PORT-26.3: a wrapper of another storage is exposed as that storage (see FabricInventoryLoaderWrapper.exposed)
+                return wrapper.exposed();
+            }
             return inventory == null ? null : ContainerStorage.of(inventory, direction);
         }, type);
     }

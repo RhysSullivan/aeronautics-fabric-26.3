@@ -31,7 +31,8 @@ public final class Sable {
     public static final String MOD_NAME = "Sable";
     public static final String MOD_ID = "sable";
 
-    public static final String ISSUE_TRACKER_URL = "https://github.com/ryanhcode/sable/issues";
+    // PORT-26.3: an unofficial Minecraft 26.3 Fabric port; its problems go to the port, not to Sable's authors
+    public static final String ISSUE_TRACKER_URL = "https://github.com/RhysSullivan/aeronautics-fabric-26.3/issues";
 
     public static final Logger LOGGER = LogUtils.getLogger();
     public static final ActiveSableCompanion HELPER = (ActiveSableCompanion) SableCompanion.INSTANCE;
@@ -87,6 +88,7 @@ public final class Sable {
             serverContainer.addObserver(new SubLevelTicketLoadingSystem(serverContainer));
 
             PhysicsBlockPropertiesDefinitionLoader.INSTANCE.applyAll();
+            dev.ryanhcode.sable.physics.config.block_properties.BlockPropertiesDump.dumpIfRequested();
         }
     }
 
@@ -118,7 +120,8 @@ public final class Sable {
     public static String getCrashHeader() {
         return "\n// " + getWittierComment() +
                 "\nPlease make sure this issue is not caused by Sable before reporting it to other mod authors." +
-                "\nIf you cannot reproduce it without Sable, file a report on the issue tracker" +
+                "\nThis is an unofficial Minecraft 26.3 port of Sable; do not report its problems to Sable's authors." +
+                "\nIf you cannot reproduce it without Sable, file a report on the port's issue tracker" +
                 "\n" + ISSUE_TRACKER_URL +
                 "\n";
     }

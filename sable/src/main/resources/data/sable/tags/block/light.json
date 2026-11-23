@@ -1,73 +1,913 @@
 {
   "replace": false,
+  "_comment": "PORT-26.3: Fabric ignores NeoForge's 'remove' in tag files. The published file adds #minecraft:slabs and #minecraft:stairs, then removes #minecraft:wooden_slabs, #minecraft:wooden_stairs, #quark:wooden_vertical_slabs and #sable:normal_slabs; the remaining slabs and stairs are listed here instead (from 26.3 with Create).",
   "values": [
     "#minecraft:planks",
     "#minecraft:logs",
-    "#minecraft:slabs",
-    "#minecraft:stairs",
     "minecraft:piston_head",
     "minecraft:barrel",
     "minecraft:chest",
     "#minecraft:bamboo_blocks",
     "#c:clusters",
     "#c:chests/wooden",
-    { "id": "create:belt", "required": false },
-    { "id": "create:track", "required": false },
-    { "id": "create:nixie_tube", "required": false },
-    { "id": "create:desk_bell", "required": false },
-    { "id": "create:piston_extension_pole", "required": false },
-    { "id": "create:turntable", "required": false },
-    { "id": "create:andesite_funnel", "required": false },
-    { "id": "create:brass_funnel", "required": false },
-    { "id": "create:factory_gauge", "required": false },
-    { "id": "create:display_link", "required": false },
-    { "id": "create:stock_link", "required": false },
-    { "id": "create:cardboard_block", "required": false },
-    { "id": "create:bound_cardboard_block", "required": false },
-
-    { "id": "create:andesite_encased_shaft", "required": false },
-    { "id": "create:andesite_encased_cogwheel", "required": false },
-    { "id": "create:andesite_encased_large_cogwheel", "required": false },
-
-    { "id": "create:brass_encased_shaft", "required": false },
-    { "id": "create:brass_encased_cogwheel", "required": false },
-    { "id": "create:brass_encased_large_cogwheel", "required": false },
-
-    { "id": "create:shaft", "required": false },
-    { "id": "create:cogwheel", "required": false },
-    { "id": "create:large_cogwheel", "required": false },
-
-    { "id": "create:hand_crank", "required": false },
-    { "id": "#create:valve_handles", "required": false },
-    { "id": "#create:seats", "required": false },
-
-    { "id": "farmersdelight:skillet", "required": false },
-    { "id": "farmersdelight:cooking_pot", "required": false },
-
-    { "id": "decorative_blocks:chain", "required": false },
-    { "id": "#decorative_blocks:beams", "required": false },
-
-    { "id": "#woodworks:wooden_boards", "required": false },
-
-    { "id": "#quark:vertical_slabs", "required": false },
-    { "id": "#quark:hollow_logs", "required": false },
-
-    { "id": "supplementaries:blackboard", "required": false },
-    { "id": "supplementaries:crystal_display", "required": false },
-    { "id": "#supplementaries:presents", "required": false },
-    { "id": "#supplementaries:trapped_presents", "required": false },
-
-    { "id": "#architects_palette:boards", "required": false },
-
-    { "id": "#storagedrawers:full_drawers", "required": false },
-    { "id": "#storagedrawers:trim", "required": false },
-
-    { "id": "#another_furniture:drawers", "required": false }
-  ],
-  "remove": [
-    "#minecraft:wooden_slabs",
-    "#minecraft:wooden_stairs",
-    "#quark:wooden_vertical_slabs",
-    "#sable:normal_slabs"
+    {
+      "id": "create:belt",
+      "required": false
+    },
+    {
+      "id": "create:track",
+      "required": false
+    },
+    {
+      "id": "create:nixie_tube",
+      "required": false
+    },
+    {
+      "id": "create:desk_bell",
+      "required": false
+    },
+    {
+      "id": "create:piston_extension_pole",
+      "required": false
+    },
+    {
+      "id": "create:turntable",
+      "required": false
+    },
+    {
+      "id": "create:andesite_funnel",
+      "required": false
+    },
+    {
+      "id": "create:brass_funnel",
+      "required": false
+    },
+    {
+      "id": "create:factory_gauge",
+      "required": false
+    },
+    {
+      "id": "create:display_link",
+      "required": false
+    },
+    {
+      "id": "create:stock_link",
+      "required": false
+    },
+    {
+      "id": "create:cardboard_block",
+      "required": false
+    },
+    {
+      "id": "create:bound_cardboard_block",
+      "required": false
+    },
+    {
+      "id": "create:andesite_encased_shaft",
+      "required": false
+    },
+    {
+      "id": "create:andesite_encased_cogwheel",
+      "required": false
+    },
+    {
+      "id": "create:andesite_encased_large_cogwheel",
+      "required": false
+    },
+    {
+      "id": "create:brass_encased_shaft",
+      "required": false
+    },
+    {
+      "id": "create:brass_encased_cogwheel",
+      "required": false
+    },
+    {
+      "id": "create:brass_encased_large_cogwheel",
+      "required": false
+    },
+    {
+      "id": "create:shaft",
+      "required": false
+    },
+    {
+      "id": "create:cogwheel",
+      "required": false
+    },
+    {
+      "id": "create:large_cogwheel",
+      "required": false
+    },
+    {
+      "id": "create:hand_crank",
+      "required": false
+    },
+    {
+      "id": "#create:valve_handles",
+      "required": false
+    },
+    {
+      "id": "#create:seats",
+      "required": false
+    },
+    {
+      "id": "farmersdelight:skillet",
+      "required": false
+    },
+    {
+      "id": "farmersdelight:cooking_pot",
+      "required": false
+    },
+    {
+      "id": "decorative_blocks:chain",
+      "required": false
+    },
+    {
+      "id": "#decorative_blocks:beams",
+      "required": false
+    },
+    {
+      "id": "#woodworks:wooden_boards",
+      "required": false
+    },
+    {
+      "id": "#quark:vertical_slabs",
+      "required": false
+    },
+    {
+      "id": "#quark:hollow_logs",
+      "required": false
+    },
+    {
+      "id": "supplementaries:blackboard",
+      "required": false
+    },
+    {
+      "id": "supplementaries:crystal_display",
+      "required": false
+    },
+    {
+      "id": "#supplementaries:presents",
+      "required": false
+    },
+    {
+      "id": "#supplementaries:trapped_presents",
+      "required": false
+    },
+    {
+      "id": "#architects_palette:boards",
+      "required": false
+    },
+    {
+      "id": "#storagedrawers:full_drawers",
+      "required": false
+    },
+    {
+      "id": "#storagedrawers:trim",
+      "required": false
+    },
+    {
+      "id": "#another_furniture:drawers",
+      "required": false
+    },
+    {
+      "id": "create:copper_shingle_slab",
+      "required": false
+    },
+    {
+      "id": "create:copper_shingle_stairs",
+      "required": false
+    },
+    {
+      "id": "create:copper_tile_slab",
+      "required": false
+    },
+    {
+      "id": "create:copper_tile_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_andesite_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_andesite_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_andesite_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_andesite_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_asurine_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_asurine_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_asurine_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_asurine_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_calcite_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_calcite_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_calcite_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_calcite_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_crimsite_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_crimsite_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_crimsite_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_crimsite_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_deepslate_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_deepslate_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_deepslate_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_deepslate_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_diorite_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_diorite_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_diorite_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_diorite_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_dripstone_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_dripstone_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_dripstone_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_dripstone_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_granite_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_granite_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_granite_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_granite_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_limestone_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_limestone_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_limestone_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_limestone_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_ochrum_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_ochrum_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_ochrum_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_ochrum_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_scorchia_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_scorchia_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_scorchia_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_scorchia_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_scoria_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_scoria_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_scoria_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_scoria_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_tuff_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_tuff_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_tuff_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_tuff_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_veridium_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_veridium_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:cut_veridium_slab",
+      "required": false
+    },
+    {
+      "id": "create:cut_veridium_stairs",
+      "required": false
+    },
+    {
+      "id": "create:exposed_copper_shingle_slab",
+      "required": false
+    },
+    {
+      "id": "create:exposed_copper_shingle_stairs",
+      "required": false
+    },
+    {
+      "id": "create:exposed_copper_tile_slab",
+      "required": false
+    },
+    {
+      "id": "create:exposed_copper_tile_stairs",
+      "required": false
+    },
+    {
+      "id": "create:oxidized_copper_shingle_slab",
+      "required": false
+    },
+    {
+      "id": "create:oxidized_copper_shingle_stairs",
+      "required": false
+    },
+    {
+      "id": "create:oxidized_copper_tile_slab",
+      "required": false
+    },
+    {
+      "id": "create:oxidized_copper_tile_stairs",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_andesite_slab",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_andesite_stairs",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_asurine_slab",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_asurine_stairs",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_calcite_slab",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_calcite_stairs",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_crimsite_slab",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_crimsite_stairs",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_deepslate_slab",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_deepslate_stairs",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_diorite_slab",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_diorite_stairs",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_dripstone_slab",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_dripstone_stairs",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_granite_slab",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_granite_stairs",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_limestone_slab",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_limestone_stairs",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_ochrum_slab",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_ochrum_stairs",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_scorchia_slab",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_scorchia_stairs",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_scoria_slab",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_scoria_stairs",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_tuff_slab",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_tuff_stairs",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_veridium_slab",
+      "required": false
+    },
+    {
+      "id": "create:polished_cut_veridium_stairs",
+      "required": false
+    },
+    {
+      "id": "create:small_andesite_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:small_andesite_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:small_asurine_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:small_asurine_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:small_calcite_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:small_calcite_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:small_crimsite_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:small_crimsite_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:small_deepslate_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:small_deepslate_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:small_diorite_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:small_diorite_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:small_dripstone_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:small_dripstone_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:small_granite_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:small_granite_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:small_limestone_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:small_limestone_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:small_ochrum_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:small_ochrum_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:small_scorchia_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:small_scorchia_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:small_scoria_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:small_scoria_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:small_tuff_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:small_tuff_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:small_veridium_brick_slab",
+      "required": false
+    },
+    {
+      "id": "create:small_veridium_brick_stairs",
+      "required": false
+    },
+    {
+      "id": "create:waxed_copper_shingle_slab",
+      "required": false
+    },
+    {
+      "id": "create:waxed_copper_shingle_stairs",
+      "required": false
+    },
+    {
+      "id": "create:waxed_copper_tile_slab",
+      "required": false
+    },
+    {
+      "id": "create:waxed_copper_tile_stairs",
+      "required": false
+    },
+    {
+      "id": "create:waxed_exposed_copper_shingle_slab",
+      "required": false
+    },
+    {
+      "id": "create:waxed_exposed_copper_shingle_stairs",
+      "required": false
+    },
+    {
+      "id": "create:waxed_exposed_copper_tile_slab",
+      "required": false
+    },
+    {
+      "id": "create:waxed_exposed_copper_tile_stairs",
+      "required": false
+    },
+    {
+      "id": "create:waxed_oxidized_copper_shingle_slab",
+      "required": false
+    },
+    {
+      "id": "create:waxed_oxidized_copper_shingle_stairs",
+      "required": false
+    },
+    {
+      "id": "create:waxed_oxidized_copper_tile_slab",
+      "required": false
+    },
+    {
+      "id": "create:waxed_oxidized_copper_tile_stairs",
+      "required": false
+    },
+    {
+      "id": "create:waxed_weathered_copper_shingle_slab",
+      "required": false
+    },
+    {
+      "id": "create:waxed_weathered_copper_shingle_stairs",
+      "required": false
+    },
+    {
+      "id": "create:waxed_weathered_copper_tile_slab",
+      "required": false
+    },
+    {
+      "id": "create:waxed_weathered_copper_tile_stairs",
+      "required": false
+    },
+    {
+      "id": "create:weathered_copper_shingle_slab",
+      "required": false
+    },
+    {
+      "id": "create:weathered_copper_shingle_stairs",
+      "required": false
+    },
+    {
+      "id": "create:weathered_copper_tile_slab",
+      "required": false
+    },
+    {
+      "id": "create:weathered_copper_tile_stairs",
+      "required": false
+    },
+    "minecraft:andesite_stairs",
+    "minecraft:bamboo_mosaic_slab",
+    "minecraft:bamboo_mosaic_stairs",
+    "minecraft:black_concrete_slab",
+    "minecraft:black_concrete_stairs",
+    "minecraft:black_wool_slab",
+    "minecraft:black_wool_stairs",
+    "minecraft:blackstone_stairs",
+    "minecraft:blue_concrete_slab",
+    "minecraft:blue_concrete_stairs",
+    "minecraft:blue_wool_slab",
+    "minecraft:blue_wool_stairs",
+    "minecraft:brick_slab",
+    "minecraft:brick_stairs",
+    "minecraft:brown_concrete_slab",
+    "minecraft:brown_concrete_stairs",
+    "minecraft:brown_wool_slab",
+    "minecraft:brown_wool_stairs",
+    "minecraft:cinnabar_brick_slab",
+    "minecraft:cinnabar_brick_stairs",
+    "minecraft:cinnabar_slab",
+    "minecraft:cinnabar_stairs",
+    "minecraft:cobbled_deepslate_stairs",
+    "minecraft:cobblestone_stairs",
+    "minecraft:cut_copper_slab",
+    "minecraft:cut_copper_stairs",
+    "minecraft:cut_red_sandstone_slab",
+    "minecraft:cut_sandstone_slab",
+    "minecraft:cyan_concrete_slab",
+    "minecraft:cyan_concrete_stairs",
+    "minecraft:cyan_wool_slab",
+    "minecraft:cyan_wool_stairs",
+    "minecraft:dark_prismarine_slab",
+    "minecraft:dark_prismarine_stairs",
+    "minecraft:deepslate_brick_slab",
+    "minecraft:deepslate_brick_stairs",
+    "minecraft:deepslate_tile_slab",
+    "minecraft:deepslate_tile_stairs",
+    "minecraft:diorite_stairs",
+    "minecraft:end_stone_brick_slab",
+    "minecraft:end_stone_brick_stairs",
+    "minecraft:exposed_cut_copper_slab",
+    "minecraft:exposed_cut_copper_stairs",
+    "minecraft:granite_stairs",
+    "minecraft:gray_concrete_slab",
+    "minecraft:gray_concrete_stairs",
+    "minecraft:gray_wool_slab",
+    "minecraft:gray_wool_stairs",
+    "minecraft:green_concrete_slab",
+    "minecraft:green_concrete_stairs",
+    "minecraft:green_wool_slab",
+    "minecraft:green_wool_stairs",
+    "minecraft:light_blue_concrete_slab",
+    "minecraft:light_blue_concrete_stairs",
+    "minecraft:light_blue_wool_slab",
+    "minecraft:light_blue_wool_stairs",
+    "minecraft:light_gray_concrete_slab",
+    "minecraft:light_gray_concrete_stairs",
+    "minecraft:light_gray_wool_slab",
+    "minecraft:light_gray_wool_stairs",
+    "minecraft:lime_concrete_slab",
+    "minecraft:lime_concrete_stairs",
+    "minecraft:lime_wool_slab",
+    "minecraft:lime_wool_stairs",
+    "minecraft:magenta_concrete_slab",
+    "minecraft:magenta_concrete_stairs",
+    "minecraft:magenta_wool_slab",
+    "minecraft:magenta_wool_stairs",
+    "minecraft:mossy_cobblestone_stairs",
+    "minecraft:mossy_stone_brick_slab",
+    "minecraft:mossy_stone_brick_stairs",
+    "minecraft:mud_brick_slab",
+    "minecraft:mud_brick_stairs",
+    "minecraft:nether_brick_slab",
+    "minecraft:nether_brick_stairs",
+    "minecraft:orange_concrete_slab",
+    "minecraft:orange_concrete_stairs",
+    "minecraft:orange_wool_slab",
+    "minecraft:orange_wool_stairs",
+    "minecraft:oxidized_cut_copper_slab",
+    "minecraft:oxidized_cut_copper_stairs",
+    "minecraft:petrified_oak_slab",
+    "minecraft:pink_concrete_slab",
+    "minecraft:pink_concrete_stairs",
+    "minecraft:pink_wool_slab",
+    "minecraft:pink_wool_stairs",
+    "minecraft:polished_andesite_slab",
+    "minecraft:polished_andesite_stairs",
+    "minecraft:polished_blackstone_brick_slab",
+    "minecraft:polished_blackstone_brick_stairs",
+    "minecraft:polished_blackstone_slab",
+    "minecraft:polished_blackstone_stairs",
+    "minecraft:polished_cinnabar_slab",
+    "minecraft:polished_cinnabar_stairs",
+    "minecraft:polished_deepslate_slab",
+    "minecraft:polished_deepslate_stairs",
+    "minecraft:polished_diorite_slab",
+    "minecraft:polished_diorite_stairs",
+    "minecraft:polished_granite_slab",
+    "minecraft:polished_granite_stairs",
+    "minecraft:polished_sulfur_slab",
+    "minecraft:polished_sulfur_stairs",
+    "minecraft:polished_tuff_slab",
+    "minecraft:polished_tuff_stairs",
+    "minecraft:prismarine_brick_slab",
+    "minecraft:prismarine_brick_stairs",
+    "minecraft:prismarine_slab",
+    "minecraft:prismarine_stairs",
+    "minecraft:purple_concrete_slab",
+    "minecraft:purple_concrete_stairs",
+    "minecraft:purple_wool_slab",
+    "minecraft:purple_wool_stairs",
+    "minecraft:purpur_slab",
+    "minecraft:purpur_stairs",
+    "minecraft:quartz_slab",
+    "minecraft:quartz_stairs",
+    "minecraft:red_concrete_slab",
+    "minecraft:red_concrete_stairs",
+    "minecraft:red_nether_brick_slab",
+    "minecraft:red_nether_brick_stairs",
+    "minecraft:red_sandstone_slab",
+    "minecraft:red_sandstone_stairs",
+    "minecraft:red_wool_slab",
+    "minecraft:red_wool_stairs",
+    "minecraft:resin_brick_slab",
+    "minecraft:resin_brick_stairs",
+    "minecraft:sandstone_slab",
+    "minecraft:sandstone_stairs",
+    "minecraft:smooth_quartz_slab",
+    "minecraft:smooth_quartz_stairs",
+    "minecraft:smooth_red_sandstone_slab",
+    "minecraft:smooth_red_sandstone_stairs",
+    "minecraft:smooth_sandstone_slab",
+    "minecraft:smooth_sandstone_stairs",
+    "minecraft:smooth_stone_slab",
+    "minecraft:stone_brick_slab",
+    "minecraft:stone_brick_stairs",
+    "minecraft:stone_stairs",
+    "minecraft:sulfur_brick_slab",
+    "minecraft:sulfur_brick_stairs",
+    "minecraft:sulfur_slab",
+    "minecraft:sulfur_stairs",
+    "minecraft:tuff_brick_slab",
+    "minecraft:tuff_brick_stairs",
+    "minecraft:tuff_stairs",
+    "minecraft:waxed_cut_copper_slab",
+    "minecraft:waxed_cut_copper_stairs",
+    "minecraft:waxed_exposed_cut_copper_slab",
+    "minecraft:waxed_exposed_cut_copper_stairs",
+    "minecraft:waxed_oxidized_cut_copper_slab",
+    "minecraft:waxed_oxidized_cut_copper_stairs",
+    "minecraft:waxed_weathered_cut_copper_slab",
+    "minecraft:waxed_weathered_cut_copper_stairs",
+    "minecraft:weathered_cut_copper_slab",
+    "minecraft:weathered_cut_copper_stairs",
+    "minecraft:white_concrete_slab",
+    "minecraft:white_concrete_stairs",
+    "minecraft:white_wool_slab",
+    "minecraft:white_wool_stairs",
+    "minecraft:yellow_concrete_slab",
+    "minecraft:yellow_concrete_stairs",
+    "minecraft:yellow_wool_slab",
+    "minecraft:yellow_wool_stairs"
   ]
 }

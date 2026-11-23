@@ -4,7 +4,8 @@ An unofficial port of Sable, Simulated, Create Aeronautics and Offroad to Minecr
 private server. It is not affiliated with or endorsed by the original authors. Please do not report problems with
 this port to them; use this repository's issues instead.
 
-This is a source snapshot of the working branch (`955aa4f`), with the original mods' art removed.
+This is a source snapshot of the working branch, with the original mods' art removed. Each snapshot is one commit
+here; built jars are on the [releases page](https://github.com/RhysSullivan/aeronautics-fabric-26.3/releases).
 
 ## Where it comes from
 
@@ -21,10 +22,15 @@ What changed for 26.3 is described in the `PORT-26.3*.md` notes in each module.
 
 - Works in survival on a dedicated server: assembling, flying, landing, relogging and restarting an airship;
   Create machinery and block entities draw on moving ships; Offroad wheels, steering and drills.
-- Known problem: with an Iris shader pack on, one of a ship's 16-block hull sections can fail to draw. Not fixed.
+- Shader packs: ships draw whole under Complementary and BSL (Iris with Sodium), and with no pack, including ships
+  carrying glass, ice and other translucent blocks and ships with water or lava aboard. Under a pack, a fluid on a
+  ship is drawn with the pack's program for moving blocks, not its water program.
+- Block masses, friction and the other physics properties match the published mods' data block by block.
 - Windows and macOS have not been tried on real machines.
-- Building from this snapshot has not been tried; it was built from the full tree it was cut from. Dependency
-  versions are in `gradle.properties` (Create Fly 6.0.9-2 for 26.3 among them).
+- A tree with the art removed, as here, builds the four code-only jars. Dependency versions are in
+  `gradle.properties` (Create Fly 6.0.9-2 for 26.3 among them).
+- The `PORT-26.3*.md` notes mention a test rig and screenshots under `create-port/`. That is a separate folder of
+  scripts and results that is not part of this repository.
 
 ## The art is not here
 

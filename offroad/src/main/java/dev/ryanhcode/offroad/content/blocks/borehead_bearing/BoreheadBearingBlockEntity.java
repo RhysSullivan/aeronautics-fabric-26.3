@@ -161,6 +161,18 @@ public class BoreheadBearingBlockEntity extends MechanicalBearingBlockEntity imp
         assert this.getLevel() != null; // I'm going to kill IJ if I see this god damn yellow box one more time
         assert this.level != null;
 
+        if (Boolean.getBoolean("offroad.debug.drillLog") && !this.level.isClientSide() && this.level.getGameTime() % 40 == 0) { // PORT-26.3: test-only
+            final var storage = net.fabricmc.fabric.api.transfer.v1.item.ItemStorage.SIDED.find(this.level, this.getBlockPos(), net.minecraft.core.Direction.SOUTH);
+            long items = 0;
+            if (storage != null) {
+                for (final var view : storage) {
+                    items += view.getAmount();
+                }
+            }
+            dev.ryanhcode.offroad.Offroad.LOGGER.info("PORT-26.3 drill {}: stalled {} recovery {} active {} speed {}; item storage seen from the south: {} holding {} items",
+                    this.getBlockPos(), this.stalled, this.stalledRecoveryTimer, this.isActive(), this.getSpeed(),
+                    storage == null ? "none" : storage.getClass().getSimpleName(), items);
+        }
         final int timerBefore = this.stalledRecoveryTimer;
         if (this.stalledRecoveryTimer > 0) {
             this.stalledRecoveryTimer--;
@@ -265,6 +277,9 @@ public class BoreheadBearingBlockEntity extends MechanicalBearingBlockEntity imp
 
             final int inserted = this.getContraptionWrappedInventory() //we can't be null here!
                     .insertGeneral(ItemInfoWrapper.generateFromStack(stack), stack.getCount(), false);
+            if (Boolean.getBoolean("offroad.debug.drillLog")) { // PORT-26.3: test-only diagnostic
+                dev.ryanhcode.offroad.Offroad.LOGGER.info("PORT-26.3 drill {}: mined {} x{}, inserted {}, stalled before {}", this.getBlockPos(), stack.getItem(), stack.getCount(), inserted, this.stalled);
+            }
             if (inserted == 0 && OffroadConfig.server().blocks.boreheadBearingStallingEnabled.get()) {
                 this.setStalled(true);
             } else {
@@ -358,6 +373,9 @@ public class BoreheadBearingBlockEntity extends MechanicalBearingBlockEntity imp
     }
 
     public void startUnstalling() {
+        if (Boolean.getBoolean("offroad.debug.drillLog")) { // PORT-26.3: test-only diagnostic
+            dev.ryanhcode.offroad.Offroad.LOGGER.info("PORT-26.3 drill {}: item extracted from the drill storage, stalled {}", this.getBlockPos(), this.stalled);
+        }
         if (this.stalled) {
             this.setStalled(false);
             this.stalledRecoveryTimer = OffroadConfig.server().blocks.boreheadBearingStallRecoveryTicks.get();
@@ -375,7 +393,15 @@ public class BoreheadBearingBlockEntity extends MechanicalBearingBlockEntity imp
     @Nullable
     public InventoryLoaderWrapper getContraptionWrappedInventory() {
         if (this.movedContraption instanceof final BoreheadContraptionEntity bce) {
-            return bce.getContraption().getSimWrappedStorage();
+            final InventoryLoaderWrapper wrapper = bce.getContraption().getSimWrappedStorage();
+            // PORT-26.3: anything taken out of the drill storage (a funnel or hopper through Fabric's transfer API)
+            // starts the recovery from a stall, as Offroad's NeoForge storage mixin does
+            wrapper.inventoryModificationCallback(extraction -> {
+                if (extraction) {
+                    this.startUnstalling();
+                }
+            });
+            return wrapper;
         }
 
         return null;

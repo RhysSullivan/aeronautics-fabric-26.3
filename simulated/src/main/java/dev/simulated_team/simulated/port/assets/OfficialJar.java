@@ -105,8 +105,13 @@ public final class OfficialJar {
                 .connectTimeout(Duration.ofSeconds(20)).build();
         final HttpRequest req = HttpRequest.newBuilder(URI.create(URL)).timeout(Duration.ofMinutes(5))
                 .header("User-Agent", "simulated-26.3-port (asset fetch)").build();
+        final long start = System.nanoTime();
+        org.slf4j.LoggerFactory.getLogger(OfficialJar.class).info("Downloading the official Create Aeronautics jar ({} MB) from {} to {} (first start only)",
+                SIZE / 1_000_000, URL, jar);
         try {
-            final HttpResponse<Path> res = http.send(req, HttpResponse.BodyHandlers.ofFile(tmp));
+            // truncate: a leftover .part longer than the file (not one cut short) would otherwise keep its tail
+            final HttpResponse<Path> res = http.send(req, HttpResponse.BodyHandlers.ofFile(tmp, java.nio.file.StandardOpenOption.CREATE,
+                    java.nio.file.StandardOpenOption.WRITE, java.nio.file.StandardOpenOption.TRUNCATE_EXISTING));
             if (res.statusCode() != 200) throw new IOException("HTTP " + res.statusCode() + " from " + URL);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -117,6 +122,8 @@ public final class OfficialJar {
             throw new IOException("downloaded file does not match the expected SHA-512");
         }
         Files.move(tmp, jar, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        org.slf4j.LoggerFactory.getLogger(OfficialJar.class).info("Downloaded and verified the official Create Aeronautics jar in {} s",
+                String.format(java.util.Locale.ROOT, "%.1f", (System.nanoTime() - start) / 1e9));
     }
 
     static String sha512(final Path file) throws IOException {

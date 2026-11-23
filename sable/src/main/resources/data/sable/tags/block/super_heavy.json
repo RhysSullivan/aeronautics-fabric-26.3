@@ -1,14 +1,42 @@
 {
   "replace": false,
+  "_comment": "PORT-26.3: Fabric ignores NeoForge's 'remove' in tag files. The published file adds #c:storage_blocks, then removes create:cardboard_block, minecraft:copper_block, minecraft:slime_block and minecraft:bone_block; its sub-tags without those are listed here instead.",
   "values": [
-    "#c:storage_blocks",
     "#minecraft:anvil",
-    "minecraft:heavy_core"
-  ],
-  "remove": [
-    { "id": "create:cardboard_block", "required": false },
-    "minecraft:copper_block",
-    "minecraft:slime_block",
-    "minecraft:bone_block"
+    "minecraft:heavy_core",
+    {
+      "id": "#c:storage_blocks/andesite_alloy",
+      "required": false
+    },
+    {
+      "id": "#c:storage_blocks/brass",
+      "required": false
+    },
+    "#c:storage_blocks/coal",
+    "#c:storage_blocks/diamond",
+    "#c:storage_blocks/dried_kelp",
+    "#c:storage_blocks/emerald",
+    "#c:storage_blocks/gold",
+    "#c:storage_blocks/iron",
+    "#c:storage_blocks/lapis",
+    "#c:storage_blocks/netherite",
+    "#c:storage_blocks/raw_copper",
+    "#c:storage_blocks/raw_gold",
+    "#c:storage_blocks/raw_iron",
+    {
+      "id": "#c:storage_blocks/raw_zinc",
+      "required": false
+    },
+    "#c:storage_blocks/redstone",
+    "#c:storage_blocks/resin",
+    "#c:storage_blocks/wheat",
+    {
+      "id": "#c:storage_blocks/zinc",
+      "required": false
+    },
+    {
+      "id": "create:experience_block",
+      "required": false
+    }
   ]
 }

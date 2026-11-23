@@ -57,7 +57,7 @@ Branch `rhys/26.3-render3`, rebased on `rhys/26.3` at `8e62513`.
 
 | Property | Effect |
 |---|---|
-| `sable.iris.hullPath=terrain` | the old draw under a pack, for comparison |
+| `sable.iris.hullPath=terrain` | removed in render4 (the old draw never worked under a pack) |
 | `sable.iris.hullShadows=false` | hulls left out of the shadow pass |
 | `sable.iris.hullPhase=false` | Iris's render phase left as it is |
 | `sable.iris.shipLightmaps=false` | the game's lightmap instead of the ship's sky-scaled one |

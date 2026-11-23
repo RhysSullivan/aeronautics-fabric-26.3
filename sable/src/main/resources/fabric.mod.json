@@ -8,7 +8,7 @@
     "${mod_author}"
   ],
   "contact": {
-    "sources": "https://github.com/ryanhcode/sable-companion",
+    "sources": "https://github.com/RhysSullivan/aeronautics-fabric-26.3",
     "issues": "${issues}"
   },
   "accessWidener": "sable.accesswidener",

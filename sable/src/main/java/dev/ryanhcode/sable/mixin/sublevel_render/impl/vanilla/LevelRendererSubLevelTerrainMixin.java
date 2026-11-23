@@ -91,6 +91,18 @@ public abstract class LevelRendererSubLevelTerrainMixin {
     @Unique
     private @Nullable DynamicGpuDataStorageMapped<DynamicGpuData.ChunkSectionInfo> sable$sectionInfos;
 
+    @Unique
+    private static boolean sable$warnedMisaligned;
+
+    @Unique
+    private static boolean sable$warnedDrawFailure;
+
+    @Unique
+    private static int sable$skyLogFrame;
+
+    @Unique
+    private @Nullable GpuBufferSlice sable$terrainFog;
+
     // Wraps the call in render(...) rather than the method, so it still runs when Sodium wraps the same call and returns
     // its own terrain object instead of calling vanilla's prepareChunkRenders.
     @WrapOperation(method = "render", require = 1, at = {
@@ -108,6 +120,7 @@ public abstract class LevelRendererSubLevelTerrainMixin {
                                          final CameraRenderState cameraState, final GpuBufferSlice terrainFog, final org.joml.Vector4f fogColor,
                                          final boolean shouldRenderSky, final boolean consistentDepthRequired, final CallbackInfo ci) {
         IrisHullPath.setTerrainFog(terrainFog);
+        this.sable$terrainFog = terrainFog;
     }
 
     @Unique
@@ -171,13 +184,13 @@ public abstract class LevelRendererSubLevelTerrainMixin {
                         .translate((float) (anchorX + fracX - pivot.x()), (float) (anchorY + fracY - pivot.y()), (float) (anchorZ + fracZ - pivot.z()));
                 final Matrix4f modelView = new Matrix4f(baseModelView).mul(local);
                 // PORT-26.3 (Iris): the same section slices, drawn with the block pipelines and a per-section ModelOffset
-                final List<org.joml.Vector3f> hullOffsets = irisPath ? new ArrayList<>() : null;
-                final EnumMap<ChunkSectionLayer, List<IrisHullPath.Draw>> hullDraws = irisPath ? new EnumMap<>(ChunkSectionLayer.class) : null;
-                if (irisPath) {
-                    for (final ChunkSectionLayer layer : ChunkSectionLayer.values()) {
-                        hullDraws.put(layer, new ArrayList<>());
-                    }
+                // also used without a pack for a sub-level whose sections are not aligned to the vertex size (see below)
+                final List<org.joml.Vector3f> hullOffsets = new ArrayList<>();
+                final EnumMap<ChunkSectionLayer, List<IrisHullPath.Draw>> hullDraws = new EnumMap<>(ChunkSectionLayer.class);
+                for (final ChunkSectionLayer layer : ChunkSectionLayer.values()) {
+                    hullDraws.put(layer, new ArrayList<>());
                 }
+                boolean misaligned = false;
 
                 final List<DynamicGpuData.ChunkSectionInfo> infos = new ArrayList<>();
                 final EnumMap<ChunkSectionLayer, List<RenderPass.Draw<GpuBufferSlice[]>>> draws = new EnumMap<>(ChunkSectionLayer.class);
@@ -200,7 +213,7 @@ public abstract class LevelRendererSubLevelTerrainMixin {
                             infoIndex = infos.size();
                             infos.add(new DynamicGpuData.ChunkSectionInfo(
                                     origin.getX() - anchorX + camBlockX, origin.getY() - anchorY + camBlockY, origin.getZ() - anchorZ + camBlockZ, 1.0F));
-                            if (irisPath) {
+                            {
                                 // terrain.vsh: Position + (ChunkPosition - CameraBlockPos) + CameraOffset = Position + origin - anchor - frac
                                 hullOffsets.add(new org.joml.Vector3f((float) (origin.getX() - anchorX - fracX),
                                         (float) (origin.getY() - anchorY - fracY), (float) (origin.getZ() - anchorZ - fracZ)));
@@ -221,8 +234,11 @@ public abstract class LevelRendererSubLevelTerrainMixin {
                         }
                         final int baseVertex = (int) (slice.vertexBufferOffset() / format.getVertexSize());
                         final int index = infoIndex;
-                        if (irisPath) {
-                            hullDraws.get(layer).add(new IrisHullPath.Draw(slice.vertexBuffer(), indexBuffer, indexType, firstIndex, draw.indexCount(), baseVertex, index));
+                        if (slice.vertexBufferOffset() % format.getVertexSize() != 0) {
+                            misaligned = true;
+                        }
+                        {
+                            hullDraws.get(layer).add(new IrisHullPath.Draw(slice.vertexBuffer(), indexBuffer, indexType, firstIndex, draw.indexCount(), baseVertex, index, slice.vertexBufferOffset()));
                         }
                         draws.get(layer).add(new RenderPass.Draw<>(0, slice.vertexBuffer(), indexBuffer, indexType, firstIndex, draw.indexCount(), baseVertex,
                                 (sectionUbos, uploader) -> uploader.setUniform("ChunkSection", sectionUbos[index])));
@@ -234,14 +250,58 @@ public abstract class LevelRendererSubLevelTerrainMixin {
                 if (largestIndexCount != 0) {
                     RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS).requestIndexCount(largestIndexCount);
                 }
+                if (Boolean.getBoolean("sable.debug.skyLog") && (sable$skyLogFrame++ % 40) == 0) { // PORT-26.3: test-only
+                    final var box = subLevel.boundingBox();
+                    final var c = box.center(new org.joml.Vector3d());
+                    final var lvl = this.sable$level();
+                    Sable.LOGGER.info("PORT-26.3: sub-level sky light scale {} at {} {} {} (bounds y {}..{}); world sky at centre+0.1 {}, block light {}",
+                            subLevel.getLatestSkyLightScale(), String.format(java.util.Locale.ROOT, "%.1f", c.x()), String.format(java.util.Locale.ROOT, "%.1f", c.y()),
+                            String.format(java.util.Locale.ROOT, "%.1f", c.z()), String.format(java.util.Locale.ROOT, "%.1f", box.minY()), String.format(java.util.Locale.ROOT, "%.1f", box.maxY()),
+                            lvl.getBrightness(net.minecraft.world.level.LightLayer.SKY, BlockPos.containing(c.x(), c.y() + 0.1, c.z())),
+                            lvl.getBrightness(net.minecraft.world.level.LightLayer.BLOCK, BlockPos.containing(c.x(), c.y() + 0.1, c.z())));
+                    // the plot's own light, which the hull's mesh is built from: sky light over the air cells inside the
+                    // plot's bounds (all 15 under open sky), and directly above the plot's top
+                    final var pb = subLevel.getPlot().getBoundingBox();
+                    int air = 0, dark = 0, skySum = 0;
+                    final BlockPos.MutableBlockPos q = new BlockPos.MutableBlockPos();
+                    for (int x = pb.minX(); x <= pb.maxX(); x++) for (int y = pb.minY(); y <= pb.maxY(); y++) for (int z = pb.minZ(); z <= pb.maxZ(); z++) {
+                        q.set(x, y, z);
+                        if (!lvl.getBlockState(q).isAir()) continue;
+                        final int sky = lvl.getBrightness(net.minecraft.world.level.LightLayer.SKY, q);
+                        air++; skySum += sky; if (sky == 0) dark++;
+                    }
+                    final int mx = (pb.minX() + pb.maxX()) / 2, mz = (pb.minZ() + pb.maxZ()) / 2;
+                    Sable.LOGGER.info("PORT-26.3: sub-level plot light: bounds {} {} {} .. {} {} {}; air cells {}, mean sky {}, sky 0 in {}; sky above the top {}; path {}, ship lightmap {}",
+                            pb.minX(), pb.minY(), pb.minZ(), pb.maxX(), pb.maxY(), pb.maxZ(), air,
+                            String.format(java.util.Locale.ROOT, "%.2f", air == 0 ? 0.0 : skySum / (double) air), dark,
+                            lvl.getBrightness(net.minecraft.world.level.LightLayer.SKY, new BlockPos(mx, pb.maxY() + 1, mz)),
+                            irisPath ? "pack" : (misaligned ? "byte offsets" : "vanilla"), subLevel.getLatestSkyLightScale() >= 15 ? "none (full sky)" : "scaled");
+                }
+                // sable.debug.hullSkyScale (test-only): the hull's terrain drawn at this sky scale while block entities keep the
+                // real one, the dark-hull symptom on purpose (the brightness test's positive control)
+                final int sable$forcedScale = Integer.getInteger("sable.debug.hullSkyScale", -1);
+                final GpuTextureView lightmap = dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelLightmaps.prepare(
+                        sable$forcedScale >= 0 ? sable$forcedScale : subLevel.getLatestSkyLightScale());
+                // PORT-26.3: vanilla's draw takes "byte offset / vertex size" as each section's base vertex, which is only
+                // right when the section arena is aligned to the meshes' vertex size. Sable's own arena takes its alignment
+                // from the vertex format when it is built, which can be Iris's 52-byte one (built during a level render with a
+                // pack on) while the meshes are now vanilla's 28 bytes (the pack turned off since). Such a sub-level is drawn
+                // at its sections' byte offsets instead, as under a pack (IrisHullPath).
+                if (irisPath || misaligned) {
+                    IrisHullPath.add(new IrisHullPath.Hull(local, camera.x, camera.y, camera.z, hullOffsets, hullDraws, largestIndexCount, lightmap));
+                    if (!irisPath && !sable$warnedMisaligned) {
+                        sable$warnedMisaligned = true;
+                        Sable.LOGGER.info("PORT-26.3: sub-level sections are not aligned to the {}-byte vertex in the section arena; drawing them at their byte offsets",
+                                ChunkSectionLayer.SOLID.vertexFormat().getVertexSize());
+                    }
+                }
+                if (!irisPath && misaligned) {
+                    continue;
+                }
                 final GpuBufferSlice terrainTransform = RenderSystem.getDynamicUniforms().writeTerrainTransform(modelView, atlas.getWidth(0), atlas.getHeight(0));
                 final GpuBufferSlice[] sectionUbos = this.sable$sectionInfos.writeData(infos.toArray(new DynamicGpuData.ChunkSectionInfo[0]));
                 this.sable$subLevelTerrain.add(new ChunkSectionsToRender.DrawSeparate(terrainTransform, draws, largestIndexCount, sectionUbos));
-                final GpuTextureView lightmap = dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelLightmaps.prepare(subLevel.getLatestSkyLightScale());
                 this.sable$subLevelLightmaps.add(lightmap);
-                if (irisPath) {
-                    IrisHullPath.add(new IrisHullPath.Hull(local, camera.x, camera.y, camera.z, hullOffsets, hullDraws, largestIndexCount, lightmap));
-                }
             }
         } finally {
             dispatcher.unlock();
@@ -259,13 +319,34 @@ public abstract class LevelRendererSubLevelTerrainMixin {
             }
             return;
         }
+        if (!this.sable$subLevelTerrain.isEmpty()) {
+            // PORT-26.3: Iris (installed, even with shaders off) replaces the translucent pass with a fresh one in which
+            // nothing is bound; vanilla's terrain draw then finds no Projection, Globals, Lighting or Fog and crashed
+            // ("bufferView is null") as soon as a sub-level had translucent blocks. Bind them for every pass we draw into.
+            RenderSystem.bindDefaultUniforms(renderPass);
+            if (this.sable$terrainFog != null) {
+                renderPass.setUniform("Fog", this.sable$terrainFog);
+            }
+        }
         try {
             for (int i = 0; i < this.sable$subLevelTerrain.size(); i++) {
                 dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelLightmaps.setOverride(this.sable$subLevelLightmaps.get(i));
-                this.sable$subLevelTerrain.get(i).renderGroup(group, renderPass, sampler, atlas, wireframe);
+                try {
+                    this.sable$subLevelTerrain.get(i).renderGroup(group, renderPass, sampler, atlas, wireframe);
+                } catch (final RuntimeException e) {
+                    // fail safe: a sub-level that cannot be drawn this frame is skipped, never the client
+                    if (!sable$warnedDrawFailure) {
+                        sable$warnedDrawFailure = true;
+                        Sable.LOGGER.error("PORT-26.3: a sub-level's {} terrain could not be drawn and is skipped (logged once)", group, e);
+                    }
+                }
             }
         } finally {
             dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelLightmaps.setOverride(null);
+        }
+        // sub-levels whose sections are not aligned to the vertex size in the arena (see prepare)
+        if (!wireframe && IrisHullPath.hasHulls()) {
+            IrisHullPath.renderMain(group.layers(), renderPass, sampler, atlas);
         }
     }
 

@@ -45,28 +45,32 @@ import java.util.OptionalDouble;
  * origin. Iris has no hook for third-party terrain in its shadow pass other than its public shadow-render callback,
  * so the same draws are repeated there with the shadow model view.
  * <p>
+ * Each section is drawn with the vertex buffer bound at the section's byte offset (base vertex 0): the shared section
+ * arenas align allocations to vanilla's 28-byte vertex, while with a pack the meshes are Iris's 52-byte terrain vertex.
+ * <p>
  * Iris is optional: everything here is reflective and inert when it is absent or no pack is in use.
- * Switches (launch-time system properties): {@code sable.iris.hullPath} = {@code block} (default) or {@code terrain}
- * (the old draw, for comparison); {@code sable.iris.hullShadows} = {@code false} to leave hulls out of the shadow pass;
+ * Switches (launch-time system properties): {@code sable.iris.hullShadows} = {@code false} to leave hulls out of the shadow pass;
  * {@code sable.iris.hullPhase} = {@code false} to skip setting Iris's render phase;
  * {@code sable.iris.shipLightmaps} = {@code false} binds the game's lightmap instead of the sub-level's sky-scaled one
  * (Iris binds whatever is given as {@code Sampler2} to the lightmap the pack samples); {@code sable.debug.blockHullPath}
- * = {@code true} uses the block path with no pack at all (tests the geometry on vanilla shaders).
+ * = {@code true} uses the block path with no pack at all (tests the geometry on vanilla shaders);
+ * {@code sable.iris.hullLog} = {@code true} logs, every 10 s, each section's byte offset, whether it is a multiple of
+ * the stride, its primitives and samples, and whether its first vertex reads as a block vertex.
  */
 public final class IrisHullPath {
     private static final boolean FORCE = Boolean.getBoolean("sable.debug.blockHullPath");
-    private static final boolean TERRAIN_PATH = "terrain".equalsIgnoreCase(System.getProperty("sable.iris.hullPath", "block"));
     private static final boolean SHADOWS = !"false".equalsIgnoreCase(System.getProperty("sable.iris.hullShadows", "true"));
     private static final boolean PHASE = !"false".equalsIgnoreCase(System.getProperty("sable.iris.hullPhase", "true"));
     private static final boolean SHIP_LIGHTMAPS = !"false".equalsIgnoreCase(System.getProperty("sable.iris.shipLightmaps", "true"));
-    private static final boolean SINGLE_DRAWS = "single".equalsIgnoreCase(System.getProperty("sable.iris.hullDrawMode", "multi"));
     private static boolean drawDiagnostic;
+    private static String drawPath = "main";
+    private static boolean warnedDrawFailure;
     private static final Vector4f WHITE = new Vector4f(1.0F, 1.0F, 1.0F, 1.0F);
     private static final Matrix4f IDENTITY = new Matrix4f();
 
     /** One section's draw of one layer: the slice of the shared section buffers plus the index of its section offset. */
     public record Draw(GpuBuffer vertexBuffer, @Nullable GpuBuffer indexBuffer, @Nullable IndexType indexType,
-                       int firstIndex, int indexCount, int baseVertex, int offsetIndex) {
+                       int firstIndex, int indexCount, int baseVertex, int offsetIndex, long vertexByteOffset) {
     }
 
     /**
@@ -168,9 +172,6 @@ public final class IrisHullPath {
     public static boolean active() {
         if (FORCE) {
             return true;
-        }
-        if (TERRAIN_PATH) {
-            return false;
         }
         return packInUse();
     }
@@ -275,11 +276,7 @@ public final class IrisHullPath {
         }
         final boolean logNow = diagnosticDue(layers.length > 0 && layers[0] == ChunkSectionLayer.TRANSLUCENT ? 1 : 0);
         drawDiagnostic = logNow;
-        if (logNow) {
-            Sable.LOGGER.info("PORT-26.3: hull diagnostic: draw mode {}, uniform buffer offset alignment {}, GL error before hull draws 0x{}",
-                    SINGLE_DRAWS ? "single" : "multi", org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL31.GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT),
-                    Integer.toHexString(org.lwjgl.opengl.GL11.glGetError()));
-        }
+        drawPath = "main";
         for (final ChunkSectionLayer layer : layers) {
             if (logNow) {
                 logLayer(layer);
@@ -305,11 +302,11 @@ public final class IrisHullPath {
         }
     }
 
-    private static final long[] lastDiagnostic = new long[2];
+    private static final long[] lastDiagnostic = new long[3];
 
-    /** Every 10 s while a pack is in use (and {@code sable.iris.hullLog} is not false): one diagnostic block. */
+    /** Every 10 s while a pack is in use and {@code sable.iris.hullLog=true} (off by default): one diagnostic block. */
     private static boolean diagnosticDue(final int group) {
-        if ("false".equalsIgnoreCase(System.getProperty("sable.iris.hullLog")) || !packInUse()) {
+        if (!Boolean.getBoolean("sable.iris.hullLog") || !packInUse()) {
             return false;
         }
         final long now = System.currentTimeMillis();
@@ -387,6 +384,8 @@ public final class IrisHullPath {
             if (terrainFog != null) {
                 renderPass.setUniform("Fog", terrainFog);
             }
+            drawDiagnostic = diagnosticDue(2);
+            drawPath = "shadow";
             final net.minecraft.client.renderer.culling.Frustum frustum = shadowFrustum();
             final java.util.Map<Hull, boolean[]> visible = new java.util.IdentityHashMap<>();
             shadowSectionsDrawn = 0;
@@ -479,12 +478,6 @@ public final class IrisHullPath {
             transforms[i] = new DynamicGpuData.Transform(modelView, WHITE, hull.offsets().get(i), IDENTITY);
         }
         final GpuBufferSlice[] slices = RenderSystem.getDynamicUniforms().writeTransforms(transforms);
-        final List<RenderPass.Draw<GpuBufferSlice[]>> passDraws = new ArrayList<>(draws.size());
-        for (final Draw draw : draws) {
-            final int index = draw.offsetIndex();
-            passDraws.add(new RenderPass.Draw<>(0, draw.vertexBuffer(), draw.indexBuffer(), draw.indexType(), draw.firstIndex(), draw.indexCount(),
-                    draw.baseVertex(), (ubos, uploader) -> uploader.setUniform("DynamicTransforms", ubos[index])));
-        }
         final RenderSystem.AutoStorageIndexBuffer sequential = RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS);
         if (hull.largestIndexCount() != 0) {
             sequential.requestIndexCount(hull.largestIndexCount());
@@ -492,28 +485,136 @@ public final class IrisHullPath {
         final GpuBuffer sequentialBuffer = hull.largestIndexCount() == 0 ? null : sequential.getBuffer();
         final IndexType sequentialType = hull.largestIndexCount() == 0 ? null : sequential.type();
 
+        final GpuTextureView lightmap = SHIP_LIGHTMAPS && hull.lightmap() != null ? hull.lightmap() : Minecraft.getInstance().gameRenderer.lightmap();
+        // Each section is drawn with the vertex buffer bound at the section's own byte offset and base vertex 0. The
+        // section buffers are shared arenas whose allocations are aligned to the vertex size the dispatcher was built
+        // with; under a shader pack the meshes are in Iris's wider terrain format, so an allocation need not start on a
+        // multiple of that stride and "offset / stride" as a base vertex would read the section from the wrong bytes
+        // (sections then vanished at random, in the main and the shadow pass alike, depending on where they landed).
+        final int stride = ChunkSectionLayer.SOLID.pipeline(false).getVertexFormatBinding(0).getVertexSize();
+        for (final Draw d : draws) {
+            bindForDraw(renderPass, layer, atlas, sampler, lightmap);
+            renderPass.setUniform("DynamicTransforms", slices[d.offsetIndex()]);
+            final long vertexBytes = (long) (d.indexCount() / 6) * 4 * stride;
+            renderPass.setVertexBuffer(0, d.vertexBuffer().slice(d.vertexByteOffset(), vertexBytes));
+            if (d.indexBuffer() != null) {
+                renderPass.setIndexBuffer(d.indexBuffer(), d.indexType());
+            } else {
+                renderPass.setIndexBuffer(sequentialBuffer, sequentialType);
+            }
+            final int[] queries = drawDiagnostic ? beginQueries() : null;
+            try {
+                renderPass.drawIndexed(d.indexCount(), 1, d.firstIndex(), 0, 0);
+            } catch (final RuntimeException e) {
+                // fail safe: a section that cannot be drawn this frame is skipped, never the client
+                if (!warnedDrawFailure) {
+                    warnedDrawFailure = true;
+                    Sable.LOGGER.error("PORT-26.3: a sub-level section ({} {}) could not be drawn and is skipped (logged once)", drawPath, layer, e);
+                }
+                if (queries != null) {
+                    endQueries(queries);
+                }
+                continue;
+            }
+            if (drawDiagnostic) {
+                Sable.LOGGER.info("PORT-26.3: hull section [{}] {} {}: byte offset {}, stride {}{}, {}, first vertex {}", drawPath, layer, d.offsetIndex(),
+                        d.vertexByteOffset(), stride, d.vertexByteOffset() % stride == 0 ? " (aligned)" : " (NOT a multiple of the stride)",
+                        endQueries(queries), firstVertexCheck(d, stride, 0));
+            }
+        }
+    }
+
+    /** Sets the layer's pipeline and samplers. */
+    private static void bindForDraw(final RenderPass renderPass, final ChunkSectionLayer layer, final GpuTextureView atlas, final GpuSampler sampler,
+                                    final GpuTextureView lightmap) {
         renderPass.setPipeline(RenderSystem.getCompiledPipeline(pipeline(layer)));
         renderPass.setUniform("Sampler0", atlas, sampler);
-        final GpuTextureView lightmap = SHIP_LIGHTMAPS && hull.lightmap() != null ? hull.lightmap() : Minecraft.getInstance().gameRenderer.lightmap();
         renderPass.setUniform("Sampler2", lightmap, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
-        if (SINGLE_DRAWS) {
-            // one draw per section with the transform bound on the pass (as vanilla draws entities), no per-draw uniforms
-            for (int i = 0; i < passDraws.size(); i++) {
-                final RenderPass.Draw<GpuBufferSlice[]> d = passDraws.get(i);
-                renderPass.setUniform("DynamicTransforms", slices[draws.get(i).offsetIndex()]);
-                renderPass.drawMultipleIndexed(List.of(new RenderPass.Draw<GpuBufferSlice[]>(d.slot(), d.vertexBuffer(), d.indexBuffer(), d.indexType(),
-                        d.firstIndex(), d.indexCount(), d.baseVertex())), sequentialBuffer, sequentialType, List.of(), slices);
-            }
-        } else {
-            renderPass.drawMultipleIndexed(passDraws, sequentialBuffer, sequentialType, List.of("DynamicTransforms"), slices);
+    }
+
+    /** Starts a samples-passed and a primitives-generated query (diagnostic). */
+    private static int[] beginQueries() {
+        try {
+            final int[] q = new int[2];
+            org.lwjgl.opengl.GL15.glGenQueries(q);
+            org.lwjgl.opengl.GL15.glBeginQuery(org.lwjgl.opengl.GL15.GL_SAMPLES_PASSED, q[0]);
+            org.lwjgl.opengl.GL15.glBeginQuery(org.lwjgl.opengl.GL30.GL_PRIMITIVES_GENERATED, q[1]);
+            return q;
+        } catch (final RuntimeException | LinkageError e) {
+            return null;
         }
-        if (drawDiagnostic) {
-            final StringBuilder b = new StringBuilder();
-            for (final Draw d : draws) {
-                final GpuBufferSlice slice = slices[d.offsetIndex()];
-                b.append(" section ").append(d.offsetIndex()).append(": ubo offset ").append(slice.offset()).append(" length ").append(slice.length());
-            }
-            Sable.LOGGER.info("PORT-26.3: hull diagnostic {} draws:{}; GL error after 0x{}", layer, b, Integer.toHexString(org.lwjgl.opengl.GL11.glGetError()));
+    }
+
+    private static String endQueries(final int @Nullable [] q) {
+        if (q == null) {
+            return "queries unavailable";
         }
+        try {
+            org.lwjgl.opengl.GL15.glEndQuery(org.lwjgl.opengl.GL30.GL_PRIMITIVES_GENERATED);
+            org.lwjgl.opengl.GL15.glEndQuery(org.lwjgl.opengl.GL15.GL_SAMPLES_PASSED);
+            final int samples = org.lwjgl.opengl.GL15.glGetQueryObjecti(q[0], org.lwjgl.opengl.GL15.GL_QUERY_RESULT);
+            final int primitives = org.lwjgl.opengl.GL15.glGetQueryObjecti(q[1], org.lwjgl.opengl.GL15.GL_QUERY_RESULT);
+            org.lwjgl.opengl.GL15.glDeleteQueries(q);
+            return "primitives generated " + primitives + ", samples passed " + samples;
+        } catch (final RuntimeException | LinkageError e) {
+            return "queries failed: " + e;
+        }
+    }
+
+    /**
+     * Diagnostic and regression check: where the draw just made actually read its first vertex (GL's vertex binding 0
+     * offset plus {@code baseVertexUsed} times the stride) must be the section's own byte offset, and the vertex there
+     * must look like a block vertex (a unit normal, at byte 28 of Iris's 52-byte terrain vertex). Reading a section at
+     * "offset / stride" from an arena not aligned to the stride fails this for every misaligned section.
+     */
+    private static String firstVertexCheck(final Draw draw, final int stride, final int baseVertexUsed) {
+        try {
+            if (stride != 52 || !org.lwjgl.opengl.GL.getCapabilities().GL_ARB_vertex_attrib_binding) {
+                return "not checked";
+            }
+            final int buffer = org.lwjgl.opengl.GL30.glGetIntegeri(org.lwjgl.opengl.ARBVertexAttribBinding.GL_VERTEX_BINDING_BUFFER, 0);
+            final long read = org.lwjgl.opengl.GL32.glGetInteger64i(org.lwjgl.opengl.ARBVertexAttribBinding.GL_VERTEX_BINDING_OFFSET, 0)
+                    + (long) baseVertexUsed * stride;
+            final java.nio.ByteBuffer bytes = org.lwjgl.BufferUtils.createByteBuffer(stride);
+            final int previous = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL31.GL_COPY_READ_BUFFER /* same enum as COPY_READ_BUFFER_BINDING */);
+            org.lwjgl.opengl.GL15.glBindBuffer(org.lwjgl.opengl.GL31.GL_COPY_READ_BUFFER, buffer);
+            org.lwjgl.opengl.GL15.glGetBufferSubData(org.lwjgl.opengl.GL31.GL_COPY_READ_BUFFER, read, bytes);
+            org.lwjgl.opengl.GL15.glBindBuffer(org.lwjgl.opengl.GL31.GL_COPY_READ_BUFFER, previous);
+            final int nx = bytes.get(28), ny = bytes.get(29), nz = bytes.get(30);
+            final double length = Math.sqrt(nx * nx + ny * ny + nz * nz) / 127.0;
+            final boolean where = read == draw.vertexByteOffset() && buffer == glHandle(draw.vertexBuffer());
+            final boolean vertex = Math.abs(length - 1.0) < 0.1;
+            return where && vertex ? "ok" : String.format(java.util.Locale.ROOT, "BAD (read at %d in buffer %d, section at %d; normal %d %d %d)",
+                    read, buffer, draw.vertexByteOffset(), nx, ny, nz);
+        } catch (final RuntimeException | LinkageError e) {
+            return "unreadable (" + e.getClass().getSimpleName() + ")";
+        }
+    }
+
+    /** The GL name of a buffer: the buffer's own {@code handle()}, or its backend's. */
+    private static int glHandle(final Object buffer) {
+        Object o = buffer;
+        for (int depth = 0; depth < 3 && o != null; depth++) {
+            try {
+                final java.lang.reflect.Method m = o.getClass().getMethod("handle");
+                return (int) m.invoke(o);
+            } catch (final ReflectiveOperationException | RuntimeException ignored) {
+            }
+            Object next = null;
+            for (Class<?> c = o.getClass(); c != null && next == null; c = c.getSuperclass()) {
+                for (final java.lang.reflect.Field f : c.getDeclaredFields()) {
+                    if (f.getName().toLowerCase(java.util.Locale.ROOT).contains("backend")) {
+                        try {
+                            f.setAccessible(true);
+                            next = f.get(o);
+                        } catch (final ReflectiveOperationException | RuntimeException ignored) {
+                        }
+                        break;
+                    }
+                }
+            }
+            o = next;
+        }
+        return -1;
     }
 }

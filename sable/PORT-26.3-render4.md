@@ -77,3 +77,127 @@ What each symptom would most likely mean, and the quick change:
   - Compare with `sable.iris.hullPhase=false`. A pack may key behaviour on the render phase.
 - **Shadow missing on big ships.**
   - Compare with `sable.iris.cullShadowSections=false`. The world box test may be wrong under some transform.
+
+## Hull sections missing under a shader pack
+
+**Symptom.** With Iris and a shader pack, ship hull sections (or whole hulls) vanished, in the main pass and the
+shadow pass alike, while every draw was submitted with correct state. Which section, which pack and which start was
+effectively random; the first ship on a fresh client usually drew.
+
+**Cause.** Under Sodium, Sable keeps every sub-level's section meshes in its own section dispatcher's shared arenas,
+one vertex arena per layer (vanilla `SectionRenderDispatcher`, `UberGpuBuffer`).
+- Each arena aligns allocations to `layer.pipeline(false).getVertexFormatBinding(0).getVertexSize()`, read once, when
+  the dispatcher is built. Iris swaps that format to its 52-byte terrain vertex on the render thread during a level
+  render with a pack on. So the arena is 52-aligned if the dispatcher happens to be built then, and 28-aligned (vanilla)
+  otherwise. Both happen in practice (GPU pass 5 logged both).
+- With a pack on, the meshes are 52-byte; each section's draw took `byte offset / 52` as its base vertex. In a
+  28-aligned arena most offsets are not multiples of 52, so those sections were read from the wrong bytes.
+
+Reproduced on software GL under BSL (three ships on one server, a fresh client each: ship 1 whole, ships 2 and 3 lost
+sections) and confirmed on the RTX 2080 (GPU pass 5: sections at offsets such as 180236 and 262164, not multiples of
+52, now draw).
+
+**Fix.**
+- Under a pack, each section is drawn with the vertex buffer bound at its own byte offset and base vertex 0
+  (`IrisHullPath`), whatever the arena's alignment.
+- The reverse case: an arena built 52-aligned with a pack on, then the pack turned off, so the meshes are vanilla's
+  28 bytes. A sub-level with any section not aligned to the current vertex size is drawn the same way without a pack,
+  through vanilla's block pipelines and shaders. Aligned sub-levels keep vanilla's own draw. Reproduced and proved on
+  software GL: the pack was turned off by Iris's own toggle, the log said the sections were not aligned, and the ship
+  drew whole.
+- Not covered: such a sub-level's translucent blocks with vanilla's improved transparency (OIT) on and no pack.
+
+**Ruled out on the way** (each by a GPU run that still lost sections with it in place):
+- stale render-pass or GL state after Sodium's raw GL calls (a full cache reset before the hull draws changed nothing);
+- the draw order;
+- a depth-convention mismatch.
+
+Two other fixes made then stay, because they are real:
+- `75af429` binds the default uniforms and the terrain fog in every pass the hull draws into: Iris's translucent pass
+  has none, which crashed with translucent ship blocks.
+- Ship block entities are added to the shadow pass.
+
+**Audit of the same assumption** (a byte offset in a shared buffer divided by a stride):
+- `LevelRendererSubLevelTerrainMixin`: the base vertex for vanilla's draw (now only used when aligned) and the first
+  index for custom (sorted translucent) index buffers. The index arena is built with a fixed alignment of 8, so
+  `offset / index size` is always exact.
+- `IrisHullPath`: no division left; the shadow pass uses the same per-section draw.
+- No other place in Sable, Simulated, Aeronautics or Offroad divides a buffer offset by a stride. Block entities,
+  Flywheel visuals and the diagram's ship mesh use their own buffers, never these arenas.
+
+**Regression test** (rig, software GL, no GPU): `hull_seq_ship` in `create-port/be/bt.py`, run three times on one
+server with a fresh client each, under a pack with `-Dsable.iris.hullLog=true`.
+- It asserts that every section draw read a block vertex at the section's own byte offset (GL's actual vertex binding
+  plus the base vertex used) and passed samples, and reports how many sections sat at offsets that are not multiples
+  of 52.
+- Passes on the fix (ships 2 and 3: 6 of 12 section draws misaligned, all good). Fails with the old base-vertex draw
+  put back: ship 2 read 4 bytes early, passed 0 samples.
+- `hull_pack_off` covers the reverse case.
+
+**Diagnostic** (`-Dsable.iris.hullLog=true`, every 10 s with a pack in use): each section draw's byte offset, whether
+it is a multiple of the stride, primitives and samples, and the first-vertex check; plus each layer's Iris program.
+
+## Crash: translucent ship blocks, Sodium, no shader pack (old; fixed here)
+
+**Symptom.** `NullPointerException: ... "bufferView" is null` in `GlCommandEncoder.setupDraw`, from vanilla's
+`DrawSeparate` under `sable$renderSubLevelGroup` in `executeClassicTransparency`. It needs a sub-level with translucent
+blocks, Sodium, and no pack. It reproduced on every build back to before render2.
+
+**Cause.** Iris, installed with shaders off, still replaces the translucent pass with a fresh one in which nothing is
+bound (`beginTranslucents`). Vanilla's terrain draw for the sub-level then had no `Projection`, `Globals`, `Lighting`
+or `Fog`. Iris needs Sodium, so the default renderer never crashed. Under a pack the hull path already bound them
+(`75af429`).
+
+**Fix.**
+- The no-pack sub-level group binds the default uniforms and the terrain fog before drawing.
+- Fail safe: a sub-level whose group draw, or a hull section whose draw, still throws is skipped for that frame with
+  one logged line, never the client.
+
+**Test.** `hull_translucent` in `create-port/be/bt.py`, run as ship one and ship two of a session, with Iris installed
+and shaders off, then under BSL.
+- The ship carries stained, tinted and plain glass, ice, slime, honey and a water cauldron.
+- For 3 minutes the camera orbits it (translucent re-sorts) and a block inside it is placed and removed every 30 s
+  (section rebuilds).
+- It asserts no crash and no skipped draw.
+- Reproduced the crash at once before the fix; all four runs pass after it.
+- The impulses barely lift this ship, so it turns more than it flies.
+
+
+## Black ship with water on it, no shader pack (fixed)
+
+- **Symptom:** the whole ship, hull and block entities alike, drawn near black from every view for the rest of the session
+  once a water source block was on it (the GPU pass broke ice on the deck). Before the no-pack translucent fix, the same
+  case crashed instead.
+- **Cause:**
+  - Water on the deck that reached a cell above open air fell out of the bottom of the ship.
+    - Upstream's `FlowingFluidMixin` guards only sideways spreading (`canPassThrough`).
+    - On 26.3, downward flow goes through `canMaybePassThrough`, which nothing guarded.
+  - Every block of the falling column grew the plot's bounds, down to the bottom of the world: in plot space, y 127..134
+    became -53..134.
+  - The ship's world bounds then reached far below it. Its sky-light sample, taken at the bounds' centre (upstream logic),
+    was underground, so the sky scale was 0. Terrain (the per-ship lightmap) and block entities (`scaleLightColor`) both
+    lost their sky light.
+  - Once the water is removed the bounds shrink back and the ship is bright again.
+- **Fix:** `FlowingFluidMixin` also refuses any flow, downwards included, into a cell outside the plot's bounds. This
+  matches upstream's stated intent ("fluids refuse to flow off the edge of sub-levels"): fluids stay on board and spread
+  on the deck, and are drawn like the same blocks in the world.
+- **Not triggers:** lava (slow, and it fell the same way given time before the fix), waterlogged blocks, seagrass,
+  flowing water with no source, a water cauldron, glass, ice, honey and slime.
+- **Test:** `bt.py hull_fluids` (create-port/be).
+  - Runs water, lava, a waterlogged slab, seagrass, flowing water and a water cauldron (the control), each on the deck of
+    the Ponder airship and on the same structure in the world.
+  - Asserts that the plot's bounds are unchanged and the fluid is still there.
+  - Compares close views of hull-only blocks, and the fluid's own close-up, against the world copy.
+  - `hull_control` with `-Dsable.debug.hullSkyScale=0` is the positive control: the comparison must fail on a black hull
+    (it reads 0.10 to 0.15).
+- **Test-only switches:** `-Dsable.debug.skyLog=true` logs the ship's sky scale, its world bounds, and its plot light
+  (bounds, sky over the air inside, the draw path). `-Dsable.debug.hullSkyScale=N` forces the hull's lightmap.
+
+**Seen, not asserted: deck under the envelope.**
+- On the airship, the deck planks under the envelope read 1.2 to 1.3 brighter on the ship than on the same structure
+  placed in the world, with or without fluids aboard; the envelope and outside views match (1.00).
+- It isn't one light sample for the whole ship: each hull vertex takes its light from the ship's own block space,
+  where the deck cells under the envelope read sky 13 to 14 (mean 14.0 over the air cells). That per-ship value only
+  scales sky light, and it is 15 here.
+- Sable's published design does the same: meshes built from plot light, one sky-light scale per ship.
+- The cause of the difference is not found. It goes on the list after the masses.

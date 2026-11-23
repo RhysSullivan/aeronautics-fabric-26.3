@@ -14,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 public final class FabricInventoryLoaderWrapper extends InventoryLoaderWrapper {
     private final Storage<ItemVariant> storage;
     private final SlottedStorage<ItemVariant> slots;
+    private Storage<ItemVariant> exposed;
 
     public FabricInventoryLoaderWrapper(final Storage<ItemVariant> storage) {
         this.storage = storage;
@@ -132,6 +133,109 @@ public final class FabricInventoryLoaderWrapper extends InventoryLoaderWrapper {
                 transaction.commit();
             }
             return extracted;
+        }
+    }
+
+    /**
+     * PORT-26.3: the storage to give Fabric's transfer API (funnels, hoppers, pipes) for this inventory: the real
+     * underlying storage, whose committed extractions also reach this wrapper's modification callback (the way other
+     * mods' extractions reach the NeoForge item handler). Exposing the wrapper itself as a container did not work: its
+     * {@code getItem} hands out copies and {@code setItem} does nothing, so nothing could be taken out through it.
+     */
+    public Storage<ItemVariant> exposed() {
+        if (this.exposed == null) {
+            this.exposed = new NotifyingStorage();
+        }
+        return this.exposed;
+    }
+
+    private void notifyExtraction(final long amount, final net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext transaction) {
+        if (amount > 0) {
+            transaction.addOuterCloseCallback(result -> {
+                if (result.wasCommitted()) {
+                    this.modified(true, false);
+                }
+            });
+        }
+    }
+
+    private final class NotifyingStorage implements Storage<ItemVariant> {
+        @Override
+        public boolean supportsInsertion() {
+            return FabricInventoryLoaderWrapper.this.storage.supportsInsertion();
+        }
+
+        @Override
+        public long insert(final ItemVariant resource, final long maxAmount, final net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext transaction) {
+            return FabricInventoryLoaderWrapper.this.storage.insert(resource, maxAmount, transaction);
+        }
+
+        @Override
+        public boolean supportsExtraction() {
+            return FabricInventoryLoaderWrapper.this.storage.supportsExtraction();
+        }
+
+        @Override
+        public long extract(final ItemVariant resource, final long maxAmount, final net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext transaction) {
+            final long extracted = FabricInventoryLoaderWrapper.this.storage.extract(resource, maxAmount, transaction);
+            FabricInventoryLoaderWrapper.this.notifyExtraction(extracted, transaction);
+            return extracted;
+        }
+
+        @Override
+        public java.util.Iterator<StorageView<ItemVariant>> iterator() {
+            final java.util.Iterator<StorageView<ItemVariant>> views = FabricInventoryLoaderWrapper.this.storage.iterator();
+            return new java.util.Iterator<>() {
+                @Override
+                public boolean hasNext() {
+                    return views.hasNext();
+                }
+
+                @Override
+                public StorageView<ItemVariant> next() {
+                    return new NotifyingView(views.next());
+                }
+            };
+        }
+    }
+
+    private final class NotifyingView implements StorageView<ItemVariant> {
+        private final StorageView<ItemVariant> view;
+
+        private NotifyingView(final StorageView<ItemVariant> view) {
+            this.view = view;
+        }
+
+        @Override
+        public long extract(final ItemVariant resource, final long maxAmount, final net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext transaction) {
+            final long extracted = this.view.extract(resource, maxAmount, transaction);
+            FabricInventoryLoaderWrapper.this.notifyExtraction(extracted, transaction);
+            return extracted;
+        }
+
+        @Override
+        public boolean isResourceBlank() {
+            return this.view.isResourceBlank();
+        }
+
+        @Override
+        public ItemVariant getResource() {
+            return this.view.getResource();
+        }
+
+        @Override
+        public long getAmount() {
+            return this.view.getAmount();
+        }
+
+        @Override
+        public long getCapacity() {
+            return this.view.getCapacity();
+        }
+
+        @Override
+        public StorageView<ItemVariant> getUnderlyingView() {
+            return this.view.getUnderlyingView();
         }
     }
 

@@ -5,6 +5,10 @@
   "name": "${mod_name}",
   "description": "${description}",
   "authors": ["${mod_author}"],
+  "contact": {
+    "issues": "https://github.com/RhysSullivan/aeronautics-fabric-26.3/issues",
+    "sources": "https://github.com/RhysSullivan/aeronautics-fabric-26.3"
+  },
   "license": "${license}",
   "environment": "*",
   "accessWidener": "simulated.accesswidener",

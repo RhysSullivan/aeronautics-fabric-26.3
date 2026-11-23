@@ -222,7 +222,20 @@ public class WheelMountBlockEntity extends KineticBlockEntity implements BlockEn
 
         this.forceTotal.applyImpulseAtPoint(subLevel, this.queuedForcePos, this.queuedForce);
         queuedWheelMounts.add(this);
+
+        // PORT-26.3: test-only diagnostic (offroad.debug.wheelLog=true): the server's view of this wheel once a second
+        if (Boolean.getBoolean("offroad.debug.wheelLog") && this.level.getGameTime() != this.port$lastWheelLog && this.level.getGameTime() % 20 == 0) {
+            this.port$lastWheelLog = this.level.getGameTime();
+            dev.ryanhcode.offroad.Offroad.LOGGER.info("PORT-26.3 wheel {} facing {}: steering {} yaw {} brake {} speed {} friction {} local velocity {} {} {} normalD {} {} {}",
+                    blockPos, facing, this.lastServerSteeringSignal, String.format(java.util.Locale.ROOT, "%.3f", this.chasingYaw),
+                    this.level.getSignal(blockPos.above(), Direction.UP), this.getSpeed(), String.format(java.util.Locale.ROOT, "%.2f", this.touchingFriction),
+                    String.format(java.util.Locale.ROOT, "%.2f", localVelocity.x), String.format(java.util.Locale.ROOT, "%.2f", localVelocity.y),
+                    String.format(java.util.Locale.ROOT, "%.2f", localVelocity.z), String.format(java.util.Locale.ROOT, "%.2f", normalD.x()),
+                    String.format(java.util.Locale.ROOT, "%.2f", normalD.y()), String.format(java.util.Locale.ROOT, "%.2f", normalD.z()));
+        }
     }
+
+    private long port$lastWheelLog = -1;
 
 
     private void applyBatchedForces() {
