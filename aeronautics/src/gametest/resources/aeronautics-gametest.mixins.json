@@ -8,11 +8,7 @@
   ],
   "client": [
     "GameRendererAccessor",
-    "LevelRendererAccessor",
-    "SkullRenderProbe",
-    "PlungerLauncherItemModelProbe",
-    "PlungerRopeRenderProbe",
-    "PlungerWorldProjectionProbe"
+    "LevelRendererAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
