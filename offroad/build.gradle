@@ -1,0 +1,17 @@
+plugins {
+    id 'java-library'
+    id 'net.fabricmc.fabric-loom'
+}
+
+apply from: rootProject.file('gradle/fabric-module.gradle')
+
+dependencies {
+    implementation project(path: ':sable')
+    implementation project(path: ':simulated')
+}
+
+// PORT-26.3: no upstream assets in this jar (they are All Rights Reserved); the game reads them from the official
+// release jar at runtime (simulated: dev.simulated_team.simulated.port.assets).
+tasks.named('jar', Jar) {
+    exclude 'assets/**'
+}

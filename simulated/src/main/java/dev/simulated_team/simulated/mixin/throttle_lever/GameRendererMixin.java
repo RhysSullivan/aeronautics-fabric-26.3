@@ -1,0 +1,52 @@
+package dev.simulated_team.simulated.mixin.throttle_lever;
+
+import dev.ryanhcode.sable.Sable;
+import dev.ryanhcode.sable.api.entity.EntitySubLevelUtil;
+import dev.simulated_team.simulated.content.blocks.throttle_lever.ThrottleLeverBlockEntity;
+import dev.simulated_team.simulated.content.blocks.throttle_lever.ThrottleLeverClientGripHandler;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.core.Direction;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+// PORT-26.3: picking moved from GameRenderer to Minecraft.pick(float); the class name is kept for the mixin config.
+@Mixin(Minecraft.class)
+public class GameRendererMixin {
+
+    @Inject(method = "pick(F)V", at = @At("TAIL"))
+    private void simulated$pickThrottleLever(final float partialTicks, final CallbackInfo ci) {
+        final Minecraft minecraft = (Minecraft) (Object) this;
+
+        final LocalPlayer player = minecraft.player;
+        if (player == null) return;
+
+        final Vec3 eyePos = Sable.HELPER.getEyePositionInterpolated(player, partialTicks);
+
+        final HitResult mcHitResult = minecraft.hitResult;
+        double minDistance = mcHitResult != null && mcHitResult.getType() != HitResult.Type.MISS ? Sable.HELPER.distanceSquaredWithSubLevels(player.level(), eyePos, mcHitResult.getLocation()) : Double.MAX_VALUE;
+
+        for (final ThrottleLeverBlockEntity lever : ThrottleLeverClientGripHandler.getNearbyThrottleLevers()) {
+            if (lever.isRemoved()) continue;
+
+            final Double hitResultDistance = ThrottleLeverClientGripHandler.raycastLever(eyePos, player.getViewVector(partialTicks), lever, partialTicks);
+
+            if (hitResultDistance != null) {
+                if (hitResultDistance < minDistance) {
+                    minDistance = hitResultDistance;
+                    minecraft.hitResult = new BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(lever.getBlockPos()), Direction.UP, lever.getBlockPos(), false);
+                }
+            }
+
+        }
+    }
+
+}

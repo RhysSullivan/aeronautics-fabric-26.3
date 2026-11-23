@@ -1,0 +1,20 @@
+package io.github.fabricators_of_create.porting_lib.models.generators;
+
+import io.github.fabricators_of_create.porting_lib.data.ExistingFileHelper;
+import net.minecraft.data.PackOutput;
+
+/**
+ * Stub class to extend for block model data providers, eliminates some
+ * boilerplate constructor parameters.
+ */
+public abstract class BlockModelProvider extends ModelProvider<BlockModelBuilder> {
+
+	public BlockModelProvider(PackOutput output, String modid, ExistingFileHelper existingFileHelper) {
+		super(output, modid, BLOCK_FOLDER, BlockModelBuilder::new, existingFileHelper);
+	}
+
+	@Override
+	public String getName() {
+		return "Block Models: " + modid;
+	}
+}

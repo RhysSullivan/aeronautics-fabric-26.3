@@ -1,0 +1,22 @@
+plugins {
+    id 'java-library'
+    id 'net.fabricmc.fabric-loom'
+}
+
+// Vendored Porting Lib classes (LGPL-3.0, see LICENSE and NOTICE.md): only what Registrate and the data generators need.
+base { archivesName = "portinglib-vendored-${minecraft_version}" }
+java { toolchain.languageVersion = JavaLanguageVersion.of(java_version) }
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+    compileOnly "com.google.code.findbugs:jsr305:3.0.2"
+    compileOnly "org.jetbrains:annotations:26.0.2"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = java_version as int
+    options.compilerArgs.addAll(['-Xmaxerrs', '5000'])
+}
+jar { from('LICENSE') { rename { 'LICENSE-portinglib' } }; from('NOTICE.md') { rename { 'NOTICE-portinglib.md' } } }

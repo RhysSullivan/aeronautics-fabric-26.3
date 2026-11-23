@@ -1,0 +1,105 @@
+base {
+    archivesName = "${mod_id}-fabric-${minecraft_version}"
+}
+
+apply from: rootProject.file('gradle/item-model-compat.gradle')
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(java_version)
+    withSourcesJar()
+}
+
+sourceSets {
+    main {
+        java {
+            exclude 'dev/simulated_team/simulated/mixin/diagram/VanillaSubLevelRenderDispatcherMixin.java'
+            exclude 'dev/simulated_team/simulated/mixin/end_sea/VanillaSubLevelRenderDispatcherMixin.java'
+            exclude 'dev/simulated_team/simulated/mixin/hold_interaction/LocalPlayerMixin.java'
+            exclude 'dev/simulated_team/simulated/mixin/lodestone_compat/CompassItemPropertyFunctionMixin.java'
+            exclude 'dev/eriksonn/aeronautics/mixin/levitite/VanillaChunkedSubLevelRenderDataMixin.java'
+            exclude 'dev/eriksonn/aeronautics/mixin/render/vanilla/LevelRendererMixin.java'
+            exclude 'dev/eriksonn/aeronautics/mixin/render/sodium/DefaultMaterialsMixin.java'
+            exclude 'dev/eriksonn/aeronautics/mixin/render/sodium/SodiumWorldRendererMixin.java'
+            exclude 'dev/eriksonn/aeronautics/mixin/render/iris/WorldRenderingPhaseMixin.java'
+        }
+        resources {
+            srcDir 'src/generated/resources'
+        }
+    }
+}
+
+loom {
+    def accessWidener = file("src/main/resources/${mod_id}.accesswidener")
+    if (accessWidener.exists()) {
+        accessWidenerPath = accessWidener
+    }
+    mods {
+        "${mod_id}" { sourceSet sourceSets.main }
+    }
+    runs {
+        client {
+            client()
+            name = "${mod_name} Fabric Client"
+            runDir = 'runs/client'
+        }
+        server {
+            server()
+            name = "${mod_name} Fabric Server"
+            runDir = 'runs/server'
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+
+    implementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+    implementation "maven.modrinth:create-fly:${create_fly_version}"
+    implementation "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${forgeconfigapiport_version}"
+    implementation "teamreborn:energy:${energy_version}"
+
+    compileOnly "dev.ryanhcode.sable-companion:sable-companion-common-1.21.1:${sable_companion_version}"
+    compileOnly "maven.modrinth:cc-tweaked:${computercraft_tweaked_version}"
+    compileOnly "com.google.code.findbugs:jsr305:3.0.2"
+    compileOnly "org.jspecify:jspecify:1.0.0"
+
+    // PORT-26.3: no Veil for 26.x; the port vendors the few Veil API classes it uses, so the 1.21.1 jar is not on the
+    // compile path (it hid uses that would fail at runtime).
+    compileOnly "org.projectlombok:lombok:1.18.42"
+    annotationProcessor "org.projectlombok:lombok:1.18.42"
+    compileOnly "maven.modrinth:jei:${jei_version}"
+    compileOnly "maven.modrinth:natures-compass:${natures_compass_version}"
+    compileOnly "maven.modrinth:explorers-compass:${explorers_compass_version}"
+    compileOnly "maven.modrinth:sodium:${sodium_version}"
+}
+
+processResources {
+    def properties = [
+            version               : project.version,
+            mod_id                : mod_id,
+            mod_name              : mod_name,
+            mod_author            : mod_author,
+            description           : project.description,
+            license               : license,
+            java_version          : java_version,
+            minecraft_version     : minecraft_version,
+            fabric_loader_version : fabric_loader_version,
+            fabric_version        : fabric_version,
+            create_mod_version    : create_mod_version,
+            sable_mod_version_range: sable_mod_version_range,
+            energy_version        : energy_version
+    ]
+
+    filesMatching(['fabric.mod.json', '*.mixins.json']) { expand properties }
+    inputs.properties(properties)
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = java_version as int
+    options.compilerArgs.addAll(['-Xmaxerrs', '20000'])
+}
+
+jar {
+    from(rootProject.file('LICENSE.md'))
+}

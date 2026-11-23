@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "dev.eriksonn.aeronautics.fabric.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [],
+  "client": [
+    "burner_flame.LevelRendererBurnerFlameMixin",
+    "levitite.CameraMixin",
+    "levitite.FogRendererMixin",
+    "levitite.WaterFogEnvironmentMixin"
+  ],
+  "injectors": { "defaultRequire": 1 }
+}

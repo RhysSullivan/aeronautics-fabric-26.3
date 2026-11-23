@@ -1,0 +1,135 @@
+plugins {
+    id 'java-library'
+    id 'net.fabricmc.fabric-loom'
+}
+
+import net.fabricmc.loom.task.prod.ClientProductionRunTask
+import net.fabricmc.loom.task.prod.ServerProductionRunTask
+
+apply from: rootProject.file('gradle/fabric-module.gradle')
+
+configurations.configureEach {
+    resolutionStrategy.capabilitiesResolution.withCapability('org.lz4:lz4-java') {
+        select('at.yawk.lz4:lz4-java:1.11.0')
+    }
+}
+
+dependencies {
+    implementation project(":portinglib")
+    implementation project(path: ':sable')
+    implementation project(path: ':simulated')
+    implementation project(path: ':offroad')
+
+    // Runtime dependencies which are not nested in the four-in-one distribution.
+    // Loom's production tasks put these alongside the packaged JAR as real mods.
+    productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+    productionRuntimeMods "maven.modrinth:create-fly:${create_fly_version}"
+    productionRuntimeMods "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${forgeconfigapiport_version}"
+    productionRuntimeMods "teamreborn:energy:${energy_version}"
+}
+
+def productionBundle = rootProject.tasks.named('build4In1Jar')
+def productionSmokeJvmArgs = [
+        '-Daeronautics.productionSmokeTest=true',
+        '-Xmx3G'
+]
+def requireProductionSmokeMarker = { task, String marker, List<String> allowedErrors = [] ->
+    def logFile = task.runDir.file('logs/latest.log').get().asFile
+    def crashReports = task.runDir.dir('crash-reports').get().asFile
+    if (crashReports.isDirectory() && crashReports.listFiles()?.length) {
+        throw new GradleException("Production smoke test wrote a crash report under ${crashReports}")
+    }
+    if (!logFile.isFile() || !logFile.getText('UTF-8').contains(marker)) {
+        throw new GradleException("Production smoke test did not reach ${marker}; inspect ${logFile}")
+    }
+    def unexpectedErrors = logFile.readLines('UTF-8').findAll { line ->
+        line =~ /\/(ERROR|FATAL)\]/
+    }.findAll { line ->
+        allowedErrors.every { allowedError -> !line.contains(allowedError) }
+    }
+    if (!unexpectedErrors.isEmpty()) {
+        throw new GradleException("Production smoke test logged errors: ${unexpectedErrors.join('; ')}")
+    }
+}
+def prepareProductionSmokeRun = { task ->
+    delete(task.runDir.file('logs/latest.log'), task.runDir.dir('crash-reports'))
+}
+
+tasks.register('runProductionServerSmoke', ServerProductionRunTask) {
+    group = 'verification'
+    description = 'Starts a dedicated server with the packaged four-in-one JAR, then exits cleanly.'
+    dependsOn(productionBundle)
+    mods.setFrom(productionBundle, configurations.productionRuntimeMods)
+    runDir.set(layout.buildDirectory.dir('production-smoke/server'))
+    jvmArgs.addAll(productionSmokeJvmArgs)
+
+    doFirst {
+        prepareProductionSmokeRun(delegate)
+        def runDirectory = runDir.get().asFile
+        runDirectory.mkdirs()
+        new File(runDirectory, 'eula.txt').setText('eula=true' + System.lineSeparator(), 'UTF-8')
+        new File(runDirectory, 'server.properties').setText(
+                'server-port=0' + System.lineSeparator()
+                        + 'online-mode=false' + System.lineSeparator(),
+                'UTF-8'
+        )
+    }
+    doLast { requireProductionSmokeMarker(delegate, 'AERONAUTICS_PRODUCTION_SERVER_SMOKE_OK') }
+}
+
+tasks.register('runProductionClientSmoke', ClientProductionRunTask) {
+    group = 'verification'
+    description = 'Starts a client with the packaged four-in-one JAR, verifies a stable render loop, then exits.'
+    dependsOn(productionBundle)
+    mods.setFrom(productionBundle, configurations.productionRuntimeMods)
+    runDir.set(layout.buildDirectory.dir('production-smoke/client'))
+    jvmArgs.addAll(productionSmokeJvmArgs)
+    doFirst { prepareProductionSmokeRun(delegate) }
+    doLast {
+        requireProductionSmokeMarker(delegate, 'AERONAUTICS_PRODUCTION_CLIENT_SMOKE_OK', [
+                'Failed to fetch user properties',
+                'Failed to fetch Realms feature flags',
+                'Error while loading the narrator'
+        ])
+    }
+}
+
+apply from: rootProject.file('gradle/ponder-gametest.gradle')
+
+def entityCullingBundle = configurations.detachedConfiguration(
+        dependencies.create("maven.modrinth:entityculling:${entityculling_version}")
+)
+entityCullingBundle.transitive = false
+
+def entityCullingGametestLibrariesDir =
+        layout.buildDirectory.dir('generated/entityculling-gametest-libraries')
+def extractEntityCullingGametestLibraries =
+        tasks.register('extractEntityCullingGametestLibraries', Sync) {
+            from({ entityCullingBundle.collect { zipTree(it) } }) {
+                include 'META-INF/jars/*.jar'
+                eachFile { details -> details.path = details.name }
+                includeEmptyDirs = false
+            }
+            into(entityCullingGametestLibrariesDir)
+        }
+def entityCullingGametestLibraries = files(
+        fileTree(entityCullingGametestLibrariesDir) {
+            include '*.jar'
+        }
+).builtBy(extractEntityCullingGametestLibraries)
+
+dependencies {
+    // Exercise the renderer stack used by the distribution in rendered-client coverage.
+    if (project.findProperty('vanillaClientGameTest') != 'true') {
+        add('gametestRuntimeOnly', "maven.modrinth:sodium:${sodium_version}")
+        add('gametestRuntimeOnly', "maven.modrinth:iris:${iris_version}")
+        add('gametestRuntimeOnly', "maven.modrinth:entityculling:${entityculling_version}")
+        add('gametestRuntimeOnly', entityCullingGametestLibraries)
+    }
+}
+
+// PORT-26.3: no upstream assets in this jar (they are All Rights Reserved); the game reads them from the official
+// release jar at runtime (simulated: dev.simulated_team.simulated.port.assets).
+tasks.named('jar', Jar) {
+    exclude 'assets/**'
+}
