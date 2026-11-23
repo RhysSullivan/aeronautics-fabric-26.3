@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.api.entity.EntitySubLevelUtil;
 import dev.ryanhcode.sable.mixinhelpers.camera.camera_rotation.EntitySubLevelRotationHelper;
+import dev.ryanhcode.sable.companion.math.Pose3dc;
 import dev.ryanhcode.sable.sublevel.ClientSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -43,7 +44,21 @@ public class EntityRenderDispatcherMixin {
     private <E extends Entity> void sable$captureEntity(final E entity, final float partialTick, final CallbackInfoReturnable<EntityRenderState> cir) {
         final EntityRenderState renderState = cir.getReturnValue();
         this.sable$adjustLeashes(entity, renderState);
-        this.sable$renderData.put(renderState, new SableRenderData(entity, partialTick));
+        // PORT-26.3: an entity kept in a sub-level's plot (armor stands, displays, item frames, contraptions on a ship)
+        // is drawn where the ship is: upstream's LevelRenderer.renderEntity hook moved its render position to the
+        // ship's render pose and rotated it with the ship; 26.3 extracts entities into render states, so the position
+        // is moved here and the rotation is applied in submit below.
+        final ClientSubLevel carrier = Sable.HELPER.getContainingClient(entity);
+        Quaternionf carrierOrientation = null;
+        if (carrier != null) {
+            final Pose3dc pose = carrier.renderPose(partialTick);
+            final Vector3d drawn = pose.transformPosition(new Vector3d(renderState.x, renderState.y, renderState.z));
+            renderState.x = drawn.x;
+            renderState.y = drawn.y;
+            renderState.z = drawn.z;
+            carrierOrientation = new Quaternionf(pose.orientation());
+        }
+        this.sable$renderData.put(renderState, new SableRenderData(entity, partialTick, carrierOrientation));
     }
 
     @Inject(method = "submit", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;translate(DDD)V", shift = At.Shift.AFTER, ordinal = 0))
@@ -54,6 +69,14 @@ public class EntityRenderDispatcherMixin {
         }
 
         final Entity entity = renderData.entity();
+        if (renderData.carrierOrientation() != null) {
+            // kept on a ship: rotate with the ship around the entity's (already moved) position
+            poseStack.pushPose();
+            poseStack.rotate(renderData.carrierOrientation());
+            this.sable$cameraOrientation = new Quaternionf(cameraRenderState.orientation); // unchanged, as upstream (restored on pop)
+            this.sable$rotated = true;
+            return;
+        }
         if (!EntitySubLevelUtil.shouldKick(entity)) {
             return;
         }
@@ -112,6 +135,6 @@ public class EntityRenderDispatcherMixin {
     }
 
     @Unique
-    private record SableRenderData(Entity entity, float partialTick) {
+    private record SableRenderData(Entity entity, float partialTick, @org.jetbrains.annotations.Nullable Quaternionf carrierOrientation) {
     }
 }
