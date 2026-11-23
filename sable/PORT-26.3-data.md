@@ -31,7 +31,7 @@ new slab or stair, isn't picked up by these lists; the check below finds that.
   - the physics definitions in the order applied;
   - every block state's stored mass, friction, restitution, fragile, volume, floating material, floating scale and
     inertia.
-- `create-port/be/props_check.py` works out the published values independently:
+- The test rig's checker (`props_check.py`, not published) works out the published values independently:
   - it reads the published tag files from git (`69001da`) and applies NeoForge's rule: all files of a tag combined,
     then every `remove` taken out of the finished tag;
   - other tags come from the game;
@@ -77,10 +77,10 @@ Selected blocks, values as `before / after / published` (NeoForge's reading of t
 | `minecraft:sticky_piston` (extended=true,facing=north) | 0.5 / 0.5 / 0.5 | 1.0 / 1.0 / 1.0 | 0.0 / 0.0 / 0.0 | False / False / False | 1.0 / 1.0 / 1.0 | None / None / None |
 | `minecraft:glass_pane` (east=true,north=true,south=true,waterlogged=true,west=true) | 0.25 / 0.25 / 0.25 | 1.0 / 1.0 / 1.0 | 0.0 / 0.0 / 0.0 | False / False / False | 0.25 / 0.25 / 0.25 | None / None / None |
 
-**Test.** `create-port/be/props-test.sh` starts the server with the dump on and runs `props_check.py`. It fails on any
+**Test.** A test-rig script (not published) starts the server with the dump on and runs `props_check.py`. It fails on any
 property or tag that differs from the published meaning, and on any NeoForge-only feature added to the four mods' data.
 
-## What the masses moved (weight-dependent proofs, software GL on boat, at y 66 like the GPU rig)
+## What the masses moved (weight-dependent proofs, software GL on a test VM, at y 66 like the GPU rig)
 
 Only the slime, copper and bone blocks changed mass (4 to 1). No other block's final properties changed, so ships
 without those three blocks weigh and fly exactly as before.
@@ -97,7 +97,7 @@ sits on the deck and never touches the ground, and friction only acts on contact
 Nothing in the data or the sources glues it there; honey and slime only pull neighbouring blocks into the ship at
 assembly time.
 
-## Floating (software GL on boat, open water, sea level 62)
+## Floating (software GL on a test VM, open water, sea level 62)
 
 The published data and Sable's physics library (`buoyancy.rs`, the same on both loaders):
 - each block in a water cell gets an upward force of 10.5 × the immersed volume × its `volume` property;

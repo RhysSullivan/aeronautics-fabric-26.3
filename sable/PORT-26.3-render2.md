@@ -1,9 +1,9 @@
 # Rendering and visual gaps, second pass (Minecraft 26.3, this server's private port)
 
 Branch `rhys/26.3-render2`, on `rhys/26.3` after `rhys/26.3-blockentities` was merged (`44101a3`). This follows
-`PORT-26.3-blockentities.md`. Proofs are on the boat rig with **software rendering only** (Mesa llvmpipe, 854x480),
-under the default renderer and Sodium 0.9.2. Screenshots are in `create-port/shots/aero-be2/`, with run and client
-logs in `logs/` there. The test script is `create-port/be/bt.py`. Prefixes `v6`..`v9`/`va` are the default renderer,
+`PORT-26.3-blockentities.md`. Proofs are on the test rig with **software rendering only** (Mesa llvmpipe, 854x480),
+under the default renderer and Sodium 0.9.2. Screenshots and run and client logs are kept
+with the unpublished test rig. The test script is part of the unpublished test rig. Prefixes `v6`..`v9`/`va` are the default renderer,
 `s6`..`s9`/`sa` Sodium.
 
 ## 1. Single-block sub-levels: already drawn
@@ -180,6 +180,6 @@ per sky level in use per frame.
 ## Measuring and test aids
 
 - `-Dsable.debug.skipSubLevelBlockEntities` (unchanged from the first branch).
-- `create-port/be/` has the rig scripts:
+- The unpublished test rig has the scripts:
   - `bt.py` adds the test steps `single_block`, `mine_shaft`, `dark_ship`, `fog`, `rain` and `items`;
   - `sheet.py` makes contact sheets.

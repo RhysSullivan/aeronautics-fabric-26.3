@@ -7,7 +7,7 @@ State on 2026-11-22: compiles; loads with Create Fly 26.3-6.0.9-2, Sable, Simula
 server and a client (with and without Sodium 0.9.2), strict Mixin audit clean. Flown in game: a survival player
 assembles a hot-air ship (Aeronautics' own Ponder rig plus a coal-fired propeller and a swivel-bearing rudder),
 lifts it with the burner's lever, cruises, steers with the steering wheel, and lands; the ship survives a relog
-and a server stop/start and lifts again; two clients see it (`create-port/shots/airship/`).
+and a server stop/start and lifts again; two clients see it (screenshots kept with the unpublished test rig).
 
 ## Gaps, most visible first
 

@@ -36,7 +36,7 @@ Everything here compiles and is meant to load; these parts are switched off unti
 **When it applies.** Only when the game's section dispatcher is not vanilla's, which is the case with Sodium.
 Without Sodium, sub-level sections use vanilla's dispatcher and its normal asynchronous path.
 
-**What was observed** on a boat client with Sodium 0.9.2, before the change:
+**What was observed** on a test client with Sodium 0.9.2, before the change:
 - 3 sub-level sections were created and queued (`queue 3`).
 - None compiled (`compiled 0`, `slices 0`), with `free buffers 0` in the dispatcher's pool, and no error in the
   log.
@@ -58,7 +58,7 @@ or a patched `runTask` that logs.
 **So for now.** On Sable's own dispatcher, sub-level sections are compiled on the render thread. The cost is
 reported in the log whenever a batch takes over 4 ms (see the measurement below).
 
-**Measured cost** (boat client, 16 vCPU EPYC, Sodium 0.9.2; `notes/sable-sync-compile-cost.log` in create-port):
+**Measured cost** (test client, 16 vCPU EPYC, Sodium 0.9.2):
 
 | Batch | Sections | Time |
 |---|---|---|

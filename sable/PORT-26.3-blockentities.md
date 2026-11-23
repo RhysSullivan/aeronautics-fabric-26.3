@@ -76,9 +76,9 @@ and `mixin/compatibility/create/flywheel/*`.
 - The mixin passes the layer's own pose. Create Fly itself calls `renderInto` only twice, which is likely why it went
   unnoticed there.
 
-## What is drawn (proved on the boat rig)
+## What is drawn (proved on the test rig)
 
-All on boat.dev VM `tg-aero-be` (xlarge), with **software rendering only** (Mesa llvmpipe under Xvfb, 854x480): the
+All on a cloud VM, with **software rendering only** (Mesa llvmpipe under Xvfb, 854x480): the
 VMs have no GPU. Server and client run Create Fly 26.3-6.0.9-2, Sable and Simulated from this branch, and Fabric API
 0.166.2. "Sodium" means Sodium 0.9.2, the pack's version.
 
@@ -88,8 +88,8 @@ The test ship is a 7x7 deck assembled with `sable assemble area`. On it:
 - Simulated: a steering wheel and a throttle lever.
 
 The ship is pushed up and sideways with a spin about two axes, teleported tilted about two axes, and photographed
-while it moves, from two sides each time. The test script is `create-port/be/bt.py`. Screenshots are in
-`create-port/shots/aero-be/`; run logs are in `logs/` there.
+while it moves, from two sides each time. The test script is part of the unpublished test rig. Screenshots and run logs
+are kept with the unpublished test rig.
 
 | What | Default renderer (Flywheel off, see gaps) | Sodium, Flywheel `instancing`/`indirect` | Sodium, Flywheel off |
 |---|---|---|---|
@@ -151,17 +151,9 @@ threads. The ship carries 16 block entities. These numbers show the relative cos
 The extraction itself is one pass over the ship's compiled sections per frame, plus a removal pass over the main
 block-entity list, which tests a plot-bounds check per entry.
 
-## Test rig (create-port/be)
+## Test rig (not published)
 
-- `vm.sh` is the port's `scripts/vm.sh`, but for VM `tg-aero-be`, job folder `/tmp/aero-be-job` and run directory
-  `~/runs/aero-be`.
-- `be_boat.sh` is `scripts/create_boat.sh` with the same paths. It also sets `maxFps:260` and
-  `inactivityFpsLimit:minimized` so frame rates are not capped.
-- `build.sh` archives this worktree's `HEAD` and builds it on the VM. `bt.py` is the test.
-- `TestDriver.java` is the port's test driver plus `prop K V` (sets a system property) and `reload` (F3+T).
-- Example: `TAG=sod_ SODIUM=1 WITH_CREATE=1 SABLE_JARS="sable simulated" ./vm.sh job stop sablesrv sablecl -- test hud build assemble rest animate move tilt night fps`.
-- After a rebuild, run `./vm.sh job stop sablelibs simlibs` first, so the new jars are used.
-- Flywheel stores the backend chosen with `/flywheel backend` in its config. `backend_DEFAULT` resets it.
+The rig (a cloud VM harness, a test client driver and the test script `bt.py`) is not published.
 
 ## Measuring aid
 

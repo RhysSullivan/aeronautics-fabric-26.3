@@ -39,7 +39,7 @@ Interactive checks: see below. Not yet run: the diagram screen.
 - `renderInto` also multiplied the caller's pose by itself (fixed on the block-entity branch,
   `mixin/create_render/EntityBlockLayerMixin`): wheel and lever handle were invisible whenever Flywheel was off.
 
-## Interactive checks (2026-11-22, boat client, Sodium on)
+## Interactive checks (2026-11-22, test client, Sodium on)
 
 Passed through real input events (mouse buttons and keys sent through `MouseHandler.onButton` and
 `KeyboardHandler.keyPress`, mouse motion through the X server): physics assembler (hold and drag, assembles the
@@ -99,5 +99,5 @@ sounds, lang and Ponder scenes are All Rights Reserved). `port/assets` supplies 
   are data-fixed on read, plus three mod block-state renames.
 - `ServerLanguage` (dedicated server): the mods' English strings from the same jar.
 New asset files the port needs must be derived the same way (a rule in `AssetOverlay`), never added under
-`src/*/resources/assets/`: the build drops them. Proofs: `create-port/scripts/handout/check_jars.py`,
+`src/*/resources/assets/`: the build drops them. Proofs (in the unpublished test rig): `check_jars.py`,
 `check_assets.py`, `check_ponder.py`.

@@ -41,7 +41,7 @@ Branch `rhys/26.3-render3`, rebased on `rhys/26.3` at `8e62513`.
 - With no pack, nothing changes: the existing terrain draw runs exactly as before.
 - Iris is optional; all access is reflective.
 
-**Verified on software GL (llvmpipe, boat VM)**, shots in `create-port/shots/aero-be3/iris/`:
+**Verified on software GL (llvmpipe, test VM)**, shots kept with the unpublished test rig:
 - No pack (Sodium, the vanilla renderer, and Iris loaded with shaders off): the old terrain draw, unchanged
   (`ha_*`, and the `hd` run).
 - The block path forced without a pack (`sable.debug.blockHullPath=true`): the same hull, including a rotated ship
@@ -93,7 +93,7 @@ The diagram screen now draws its 3D ship preview through 26.3's picture-in-pictu
 - it draws a cached block mesh of the ship's plot (`DiagramShipMesh`, rebuilt every 3 s);
 - it then runs the outline and palette pass, a derived official shader, as a screen-quad pass.
 
-Shots are in `create-port/shots/aero-be3/diagram/`.
+Shots are kept with the unpublished test rig.
 
 - Two bugs, found once the rig ran a fresh jar (earlier "blank" runs had a stale Simulated jar):
   - the view was recorded on `fbo` while the screen shows `finalFbo` (the 1.21 three-buffer chain is one pass now);

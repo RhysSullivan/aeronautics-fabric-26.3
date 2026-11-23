@@ -1,7 +1,7 @@
 # PORT-26.3 render4: diagram overlays, the flame under a shader pack, shadow limits, laser copies
 
 Branch `rhys/26.3-render4`. It starts from `rhys/26.3-render3` (`53e3446`, the GPU build) and will be rebased onto
-`rhys/26.3` once render3 is merged. Shots and client logs are in `create-port/shots/aero-be3/render4/`.
+`rhys/26.3` once render3 is merged. Shots and client logs are kept with the unpublished test rig.
 
 ## Diagram force and rotation overlays (Simulated)
 
@@ -125,7 +125,7 @@ Two other fixes made then stay, because they are real:
 - No other place in Sable, Simulated, Aeronautics or Offroad divides a buffer offset by a stride. Block entities,
   Flywheel visuals and the diagram's ship mesh use their own buffers, never these arenas.
 
-**Regression test** (rig, software GL, no GPU): `hull_seq_ship` in `create-port/be/bt.py`, run three times on one
+**Regression test** (rig, software GL, no GPU): `hull_seq_ship` in the test rig's `bt.py` (not published), run three times on one
 server with a fresh client each, under a pack with `-Dsable.iris.hullLog=true`.
 - It asserts that every section draw read a block vertex at the section's own byte offset (GL's actual vertex binding
   plus the base vertex used) and passed samples, and reports how many sections sat at offsets that are not multiples
@@ -153,7 +153,7 @@ or `Fog`. Iris needs Sodium, so the default renderer never crashed. Under a pack
 - Fail safe: a sub-level whose group draw, or a hull section whose draw, still throws is skipped for that frame with
   one logged line, never the client.
 
-**Test.** `hull_translucent` in `create-port/be/bt.py`, run as ship one and ship two of a session, with Iris installed
+**Test.** `hull_translucent` in the test rig's `bt.py` (not published), run as ship one and ship two of a session, with Iris installed
 and shaders off, then under BSL.
 - The ship carries stained, tinted and plain glass, ice, slime, honey and a water cauldron.
 - For 3 minutes the camera orbits it (translucent re-sorts) and a block inside it is placed and removed every 30 s
@@ -183,7 +183,7 @@ and shaders off, then under BSL.
   on the deck, and are drawn like the same blocks in the world.
 - **Not triggers:** lava (slow, and it fell the same way given time before the fix), waterlogged blocks, seagrass,
   flowing water with no source, a water cauldron, glass, ice, honey and slime.
-- **Test:** `bt.py hull_fluids` (create-port/be).
+- **Test:** `bt.py hull_fluids` (test rig, not published).
   - Runs water, lava, a waterlogged slab, seagrass, flowing water and a water cauldron (the control), each on the deck of
     the Ponder airship and on the same structure in the world.
   - Asserts that the plot's bounds are unchanged and the fluid is still there.

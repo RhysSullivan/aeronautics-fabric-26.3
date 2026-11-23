@@ -29,8 +29,9 @@ What changed for 26.3 is described in the `PORT-26.3*.md` notes in each module.
 - Windows and macOS have not been tried on real machines.
 - A tree with the art removed, as here, builds the four code-only jars. Dependency versions are in
   `gradle.properties` (Create Fly 6.0.9-2 for 26.3 among them).
-- The `PORT-26.3*.md` notes mention a test rig and screenshots under `create-port/`. That is a separate folder of
-  scripts and results that is not part of this repository.
+- Recipes: the mods' recipes, advancements and loot tables all load; mixing, deploying and crafting recipes were
+  made in game, the levitite blend among them.
+- The `PORT-26.3*.md` notes describe tests run on a separate test rig that is not part of this repository.
 
 ## The art is not here
 

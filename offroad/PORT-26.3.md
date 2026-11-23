@@ -1,7 +1,7 @@
 # Offroad on Minecraft 26.3: port notes
 
 State on 2026-11-22: compiles and loads with Create Fly, Sable, Simulated and Aeronautics (server and client,
-strict Mixin audit clean). Driven in game (boat client, code-only jars, `create-port/shots/offroad/`):
+strict Mixin audit clean). Driven in game (test client, code-only jars):
 - wheel mounts: a survival player fits tyres by right-clicking each mount's face (4 of 4); a 5x5 deck with four
   motor-driven mounts, assembled into a sub-level, drives on the floor (about 16 blocks in 18 s, turning: the test
   rig's motor directions, not the port). Brakes (mounts powered from above) not proved: 3-7 s after powering, the car
@@ -28,7 +28,7 @@ Changes beyond mechanical renames:
   Now Simulated exposes such wrappers as their real underlying storage, and committed extractions reach the wrapper's
   modification callback. The bearing sets that callback to start unstalling, as Offroad's NeoForge storage mixin does.
 
-  Proved on the rig (`create-port/shots/offroad2/`): full storage, 1 block cut in 20 s (stalled); a funnel behind
+  Proved on the rig (screenshots kept with the unpublished test rig): full storage, 1 block cut in 20 s (stalled); a funnel behind
   the bearing hands items out and the drill cuts again (8 blocks in the next 30 s, at the andesite funnel's pace).
 
   The fault was inherited from the 1.21.11 Fabric port; upstream's NeoForge build uses item-handler capabilities.
