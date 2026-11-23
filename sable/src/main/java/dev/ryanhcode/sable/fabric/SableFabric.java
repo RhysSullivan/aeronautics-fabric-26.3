@@ -51,6 +51,7 @@ public final class SableFabric implements ModInitializer {
         helper.registerReloadListener(new ResourceReloadDelegate(DimensionPhysicsData.ReloadListener.ID, DimensionPhysicsData.ReloadListener.INSTANCE));
         helper.registerReloadListener(new ResourceReloadDelegate(FloatingBlockMaterialDataHandler.ReloadListener.ID, FloatingBlockMaterialDataHandler.ReloadListener.INSTANCE));
 
+        ServerLifecycleEvents.SERVER_STARTED.register(dev.ryanhcode.sable.physics.config.block_properties.BlockPropertiesDump::dumpDataIfRequested); // PORT-26.3: test-only
         ServerLifecycleEvents.SYNC_DATA_PACK_CONTENTS.register((player, joined) -> SableCommonEvents.syncDataPacket(dev.ryanhcode.sable.network.tcp.SablePacketSink.player(player)));
 
         ConfigRegistry.INSTANCE.register(Sable.MOD_ID, ModConfig.Type.COMMON, SableConfig.SPEC);

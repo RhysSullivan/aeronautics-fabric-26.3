@@ -11,9 +11,9 @@
                     ],
     "fluid_ingredients":  [
                               {
-                                  "type":  "fluid_tag",
+                                  "type":  "fluid_stack",
                                   "amount":  40500,
-                                  "fluid_tag":  "#c:water"
+                                  "fluid":  "minecraft:water"
                               }
                           ],
     "fluid_results":  [

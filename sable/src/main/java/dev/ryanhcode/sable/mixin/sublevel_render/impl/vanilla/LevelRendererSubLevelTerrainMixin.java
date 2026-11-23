@@ -138,6 +138,7 @@ public abstract class LevelRendererSubLevelTerrainMixin {
         if (container == null || dispatcher == null) {
             return;
         }
+        dev.ryanhcode.sable.sublevel.render.vanilla.LightProbeDump.maybeDump(this.sable$level(), container.getAllSubLevels()); // PORT-26.3: test-only
         if (pathChanged) {
             // a shader pack was switched on or off: Iris builds meshes in its wider vertex format while a pack is in use
             for (final ClientSubLevel subLevel : container.getAllSubLevels()) {

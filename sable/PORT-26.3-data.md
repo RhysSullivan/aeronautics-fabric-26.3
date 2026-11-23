@@ -125,3 +125,77 @@ At the water line:
 Tests: `bt.py floating` asserts the deck depths, both sinking cases, the airship floating, its bounds and water staying
 put, and the lift-off with the burner on. `bt.py lift_compare` (`LIFT_VARIANTS`, `LIFT_Y`) gives the climb table.
 `-Daeronautics.debugLift=true` logs the balloon's lift, filled volume, pressure and gravity every 40 ticks.
+
+## Beyond tags: recipes, loot tables, advancements, data load
+
+Searched the four mods' `data/`, and checked what a 26.3 server with the port and Create Fly actually loaded:
+- **NeoForge-only types and conditions:** none.
+  - Recipe types are Create's (`create:mixing`, `filling`, `deploying` and others, provided by Create Fly) plus
+    `simulated:portable_engine_dyeing`.
+  - The fluid ingredient type `fluid_tag` is Create Fly's.
+  - Advancement triggers are the mods' own; their `conditions` are vanilla criterion conditions.
+  - Loot conditions are vanilla.
+  - There are no `neoforge:conditions`, `forge:` or `neoforge:` types, and no data maps.
+- **Loaded:** a test-only dump written once the server has started (`<dump>.data`, from
+  `-Dsable.debug.dumpBlockProperties`) lists every recipe, advancement and loot table the game holds.
+  - All 125 recipes, 138 advancements and 136 loot tables in the four mods loaded.
+- **Ingredient tags:** all 71 tag ingredients in the recipes exist and are non-empty on Fabric.
+- **One content difference:** on Fabric, `#c:water` holds Create's honey and chocolate as well as water.
+  - Create Fly adds those fluids to `#minecraft:water`, presumably so entities swim in them, and Fabric's `#c:water`
+    includes `#minecraft:water`.
+  - So Aeronautics' levitite blend (mixing, 40,500 units of `#c:water`) accepted honey or chocolate in the port; the
+    published mod accepts only water.
+  - **Fixed:** the recipe now takes `minecraft:water` as a `fluid_stack`, the form Create Fly's own water recipes use.
+  - **Not fixed (from Create Fly's tag, not the port's data; noted for a decision):** code that tests
+    `FluidTags.WATER` treats honey and chocolate as water on Fabric. For example, Simulated's absorber
+    (`AbsorberBlockEntity`) would soak up honey and chocolate source blocks.
+- **Server log:** a clean start of the port's server shows no data-load warnings or errors for the four mods'
+  namespaces. The warnings present are:
+  - dev-environment noise (missing refmaps, Create Fly's porting library without a version number);
+  - Aeronautics' notice that the official release jar is absent on a dedicated server (only art comes from it);
+  - the offline sandbox's failed connections and offline-mode notices;
+  - Fabric Loader's note that Forge Config API Port recommends Mod Menu (a client mod).
+  - Every WARN and ERROR line of the start was read, not only those naming the four mods. Data-load failures are
+    logged at WARN or ERROR, so INFO level loses nothing here.
+- **Test:** `props_check.py` (`be/props-test.sh`) now also fails if:
+  - any of the four mods' recipes, advancements or loot tables is not loaded;
+  - a recipe's item tag is empty;
+  - a recipe's fluid tag is empty, or (for water) holds anything but water.
+  - It flags the old levitite recipe and passes the fixed one.
+
+## Water and lava tags on Fabric (honey and chocolate count as water)
+
+On this server, with the port and Create Fly:
+- `#minecraft:water` and `#c:water` hold water, Create's honey and Create's chocolate (source and flowing). Create Fly
+  adds those to the vanilla water tag so they behave like water, and Fabric's `#c:water` includes it.
+- `#minecraft:lava` and `#c:lava` hold lava only.
+- On NeoForge, the published mod's water tags hold water alone.
+
+Rule (2026-11-23):
+- Where the four mods use a tag to decide what a fluid IS and then consume it, convert it or make something from it,
+  they now test the fluid itself.
+- Where the tag decides how a fluid BEHAVES physically, it stays, and honey and chocolate act like water. That is
+  consistent on Fabric (for example, a ship floats on a honey lake).
+
+Every use in the four mods' code and data:
+
+| Where | Test | Kind | On Fabric with honey and chocolate | Change |
+|---|---|---|---|---|
+| Aeronautics recipe `mixing/levitite_blend` | `#c:water` | makes something | accepted as the water | **fixed** (`5417400`): `minecraft:water` itself |
+| Simulated absorber (`AbsorberBlockEntity`) | `FluidTags.WATER` | consumes (deletes adjacent fluid blocks) | would delete them | **fixed** (`f03472f`): water itself. The absorber is commented out of the block registry in the published release and in the port, so no player can have one today. |
+| Aeronautics levitite blend beside lava turns to obsidian or calcite (`FabricAeroFluids`) | `FluidTags.LAVA` | converts | not affected; the lava tags hold lava only | none; the data check fails if anything else enters a lava tag |
+| Sable camera inside a ship's fluid (`CameraMixin`) | `FluidTags.WATER`, `LAVA` | behaviour: underwater or lava view | water view, as in the world on Fabric | none (known Fabric difference) |
+| Sable punch on a fluid block (`ServerboundPunchSubLevelPacket`) | `FluidTags.WATER` | behaviour: splash particles and sound | splash like water | none (known Fabric difference) |
+| Levitite eye-in-fluid (`levitite/EntityMixin`) | `FluidTags.WATER` query | behaviour: drowning and air meter in levitite | unaffected (it asks about levitite) | none |
+| Registrate's fluid settings (`SimpleFlowableFluid`) | `FluidTags.LAVA` | behaviour: the mods' own fluids' flow | unaffected | none |
+| Sable buoyancy (`VoxelNeighborhoodState.isLiquid`) | any liquid, not a tag | behaviour | a ship floats on honey, as in the published mod (honey is a liquid there too) | none |
+| Aeronautics propeller particles, steam vent waterlogging | `Fluids.WATER` / `LAVA` itself | effect / state | already exact | none |
+
+**Guard.** `props_check.py` (`be/props-test.sh`) holds the reviewed list of water and lava tag uses with their kind. It
+fails on any use in the four mods' code or data that isn't on the list, and on a lava tag holding anything but lava. Run
+against the published forms of the recipe and the absorber, it flags both.
+
+**In game.** No absorber case is possible: the block doesn't exist in either build. `bt.py absorber_fluids` reports
+that, and becomes the four-fluid check (honey, chocolate and lava left alone, water soaked up) if the block is ever
+registered. The live consuming use, the levitite recipe, is covered by the data check on the loaded recipe's
+ingredient.

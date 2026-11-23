@@ -88,7 +88,7 @@ public final class Sable {
             serverContainer.addObserver(new SubLevelTicketLoadingSystem(serverContainer));
 
             PhysicsBlockPropertiesDefinitionLoader.INSTANCE.applyAll();
-            dev.ryanhcode.sable.physics.config.block_properties.BlockPropertiesDump.dumpIfRequested();
+            dev.ryanhcode.sable.physics.config.block_properties.BlockPropertiesDump.dumpIfRequested(serverLevel.getServer());
         }
     }
 

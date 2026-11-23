@@ -12,7 +12,6 @@ import com.zurrtum.create.catnip.animation.LerpedFloat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -98,7 +97,9 @@ public class AbsorberBlockEntity extends SmartBlockEntity {
                     final BlockPos newPos = this.getBlockPos().relative(dir);
                     final BlockState blockstate = this.level.getBlockState(newPos);
                     final FluidState fluidstate = this.level.getFluidState(newPos);
-                    if (fluidstate.is(FluidTags.WATER) && blockstate.getBlock() instanceof LiquidBlock)
+                    // PORT-26.3: water itself, not the water tag: on Fabric Create Fly puts its honey and chocolate in
+                    // #minecraft:water (so they behave like water physically), and the absorber would delete them
+                    if (fluidstate.getType().isSame(net.minecraft.world.level.material.Fluids.WATER) && blockstate.getBlock() instanceof LiquidBlock)
                     {
                         this.level.setBlock(newPos, Blocks.AIR.defaultBlockState(), 3);
                         doWet =true;

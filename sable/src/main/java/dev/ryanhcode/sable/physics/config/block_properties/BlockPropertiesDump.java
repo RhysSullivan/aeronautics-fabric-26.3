@@ -23,7 +23,28 @@ public final class BlockPropertiesDump {
     private BlockPropertiesDump() {
     }
 
-    public static void dumpIfRequested() {
+    /** Once the server has started: every recipe, advancement and loot table it loaded, to FILE.data. */
+    public static void dumpDataIfRequested(final net.minecraft.server.MinecraftServer server) {
+        final String file = System.getProperty("sable.debug.dumpBlockProperties");
+        if (file == null || file.isEmpty()) {
+            return;
+        }
+        try (PrintWriter out = new PrintWriter(Files.newBufferedWriter(Path.of(file + ".data"), StandardCharsets.UTF_8))) {
+            for (final var holder : server.getRecipeManager().getRecipes()) {
+                out.println("recipe\t" + holder.id());
+            }
+            for (final var holder : server.getAdvancements().getAllAdvancements()) {
+                out.println("advancement\t" + holder.id());
+            }
+            server.reloadableRegistries().lookup().lookupOrThrow(net.minecraft.core.registries.Registries.LOOT_TABLE)
+                    .listElementIds().forEach(id -> out.println("loot\t" + id));
+            Sable.LOGGER.info("PORT-26.3: loaded recipes, advancements and loot tables dumped to {}.data", file);
+        } catch (final IOException e) {
+            Sable.LOGGER.error("PORT-26.3: could not dump loaded data", e);
+        }
+    }
+
+    public static void dumpIfRequested(final net.minecraft.server.MinecraftServer server) {
         final String file = System.getProperty("sable.debug.dumpBlockProperties");
         if (file == null || file.isEmpty()) {
             return;

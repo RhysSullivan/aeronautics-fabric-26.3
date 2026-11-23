@@ -193,11 +193,27 @@ and shaders off, then under BSL.
 - **Test-only switches:** `-Dsable.debug.skyLog=true` logs the ship's sky scale, its world bounds, and its plot light
   (bounds, sky over the air inside, the draw path). `-Dsable.debug.hullSkyScale=N` forces the hull's lightmap.
 
-**Seen, not asserted: deck under the envelope.**
-- On the airship, the deck planks under the envelope read 1.2 to 1.3 brighter on the ship than on the same structure
-  placed in the world, with or without fluids aboard; the envelope and outside views match (1.00).
-- It isn't one light sample for the whole ship: each hull vertex takes its light from the ship's own block space,
-  where the deck cells under the envelope read sky 13 to 14 (mean 14.0 over the air cells). That per-ship value only
-  scales sky light, and it is 15 here.
-- Sable's published design does the same: meshes built from plot light, one sky-light scale per ship.
-- The cause of the difference is not found. It goes on the list after the masses.
+**Deck under the envelope: the test, not the port (resolved).**
+- The 1.2 to 1.3 reading came from the test's framing. The stamped airship floats one block above the floor (its Ponder
+  base plate is removed) and settles onto it when assembled, before the reference pose is taken. Every ship view was
+  therefore framed one block higher above the deck than the world copy's.
+- With the true settled offset (found by locating the ship's assembler in the world), the deck views read 0.97 to
+  1.02, and the deck under cover 1.00.
+- **Light data:** a test-only client dump (`-Dsable.debug.lightDump=FILE`, `LightProbeDump`) compares every cell of the
+  ship's own block space with the world copy's.
+  - All 596 air cells hold the same sky and block light: under the envelope, sky 12 to 14 on both.
+  - So the envelope casts its sky-light shadow in the ship's space exactly as in the world.
+  - Face shading is the vanilla table on both (up 1.0, north 0.8). Light comes per block from the ship's own block
+    space, as in Sable's published design.
+- **Under BSL:**
+  - The hull's own shadow is in place. With the hull left out of the shadow pass the covered deck reads 81 to 92
+    (sunlit); with it in, 56, the world copy's value.
+  - BSL adds a time-varying full-screen haze to some frames, about +11 on that dark view, on the ship and the world copy
+    alike. It persists with TAA or light shafts off and lasts under 10 s, so the test takes three shots 6 s apart and
+    uses the darkest.
+- **Test:** `hull_fluids` now asserts the deck-under-cover view (`deck_under_cover_spectator`) for every case, with and
+  without a pack.
+- **What isn't asserted, and why:**
+  - With water, waterlogged blocks, seagrass or lava out, the open deck view shows the world copy's fluid running off
+    onto the floor, which a ship's fluids never do (upstream's design).
+  - After lava, the world copy's wooden deck may be burning.
