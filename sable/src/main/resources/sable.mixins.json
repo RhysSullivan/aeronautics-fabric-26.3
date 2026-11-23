@@ -62,6 +62,7 @@
         "compatibility.create.flywheel.VisualizationManagerImplMixin",
         "sublevel_render.LevelRendererMixin",
         "sublevel_render.impl.vanilla.ViewAreaMixin",
+        "sublevel_render.impl.sodium.SodiumSectionDirtyMixin",
         "sublevel_sounds.AbstractSoundInstanceMixin",
         "sublevel_sounds.ChannelAccessor",
         "sublevel_sounds.ClientLevelMixin",

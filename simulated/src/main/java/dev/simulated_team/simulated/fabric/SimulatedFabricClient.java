@@ -44,9 +44,12 @@ public final class SimulatedFabricClient implements ClientModInitializer {
             LateLaserRenderQueue.finishWorldFrameCollection();
             IrisLaserRenderQueue.finishWorldFrameCollection();
         });
-        // PORT-26.3: no block outline while hovering a rope (was a LevelRenderer.extractBlockOutline mixin).
+        // PORT-26.3: no block outline while hovering a rope (was a LevelRenderer.extractBlockOutline mixin), nor while
+        // holding the physics staff, which draws its own selection box (was GameRenderer.shouldRenderBlockOutline).
         LevelRenderEvents.BEFORE_BLOCK_OUTLINE.register((context, outline) ->
-                dev.simulated_team.simulated.content.blocks.rope.strand.client.ZiplineClientManager.hoveringRope == null);
+                dev.simulated_team.simulated.content.blocks.rope.strand.client.ZiplineClientManager.hoveringRope == null
+                        && (Minecraft.getInstance().player == null
+                        || !dev.simulated_team.simulated.content.physics_staff.PhysicsStaffItem.isHolding(Minecraft.getInstance().player)));
         // PORT-26.3: the staff overlay is submitted with the level's other geometry through the render bridge.
         LevelRenderEvents.COLLECT_SUBMITS.register(context ->
                 dev.simulated_team.simulated.compat.create.RenderBridge.submit(context.poseStack(),

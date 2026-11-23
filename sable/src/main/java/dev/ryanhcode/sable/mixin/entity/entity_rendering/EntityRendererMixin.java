@@ -111,8 +111,11 @@ public abstract class EntityRendererMixin {
 
     @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true)
     private <E extends Entity> void sable$shouldRender(final E entity, final Frustum frustum, final double pCamX, final double pCamY, final double pCamZ, final float partialTicks, final CallbackInfoReturnable<Boolean> cir) { // PORT-26.3: shouldRender gained partialTicks
+        // PORT-26.3: vanilla asks the entity first (its render distance, a display entity's view range, and any mod
+        // that hides an entity there); this early return used to answer "render" before that question for every
+        // entity outside frustum culling, which includes every display entity of zero size (vanilla's default).
         if (!this.affectedByCulling(entity)) {
-            cir.setReturnValue(true);
+            cir.setReturnValue(entity.shouldRender(pCamX, pCamY, pCamZ));
             return;
         }
 
