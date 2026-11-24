@@ -31,7 +31,7 @@ import java.util.Map;
  * Rotates entity rendering to match the sub-level's rotation
  */
 @Mixin(EntityRenderDispatcher.class)
-public class EntityRenderDispatcherMixin {
+public class EntityRenderDispatcherMixin implements dev.ryanhcode.sable.mixinterface.entity.SableRenderDataHolder {
 
     @Unique
     private final Map<EntityRenderState, SableRenderData> sable$renderData = new IdentityHashMap<>();
@@ -39,6 +39,17 @@ public class EntityRenderDispatcherMixin {
     private boolean sable$rotated = false;
     @Unique
     private Quaternionf sable$cameraOrientation;
+
+    /**
+     * PORT-26.3: an entry lives from an entity's extraction to its submit in the same frame. A state extracted but not
+     * submitted (culled, or drawn by another path) was never removed and kept its entity, and through it the entity's
+     * level, for the life of the game; {@link dev.ryanhcode.sable.mixin.entity.entity_rotations_and_riding.LevelExtractorMixin}
+     * empties the map when a frame's extraction starts.
+     */
+    @Override
+    public void sable$clearRenderData() {
+        this.sable$renderData.clear();
+    }
 
     @Inject(method = "extractEntity", at = @At("RETURN"))
     private <E extends Entity> void sable$captureEntity(final E entity, final float partialTick, final CallbackInfoReturnable<EntityRenderState> cir) {

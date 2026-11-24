@@ -123,6 +123,11 @@ public abstract class ClientChunkCacheMixin implements DebugChunkProviderAttachm
 
             this.level.onChunkLoaded(chunkPos);
             this.level.getLightEngine().setLightEnabled(chunkPos, true);
+            // PORT-26.3: new chunk data may hold new light sources
+            final dev.ryanhcode.sable.sublevel.plot.LevelPlot sable$plot = container.getPlot(chunkPos);
+            if (sable$plot != null) {
+                sable$plot.bumpLightChange();
+            }
 
             SableChunkEventPlatform.INSTANCE.onClientChunkPacketReplaced(levelChunk);
             cir.setReturnValue(levelChunk);

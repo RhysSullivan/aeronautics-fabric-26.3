@@ -22,6 +22,12 @@ public class MinecraftMixin {
 
     @Unique @Nullable private ClientLevel sable$dynamicLightLevel;
 
+    /** PORT-26.3: with the level renderer's data, Sable's own section dispatcher is dropped when the client level changes. */
+    @Inject(method = "updateLevelInEngines(Lnet/minecraft/client/multiplayer/ClientLevel;Z)V", at = @At("HEAD"))
+    private void sable$levelChanging(final ClientLevel newLevel, final boolean stopSound, final CallbackInfo ci) {
+        dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelSectionDispatcher.reset();
+    }
+
     @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/tutorial/Tutorial;onLookAt(Lnet/minecraft/client/multiplayer/ClientLevel;Lnet/minecraft/world/phys/HitResult;)V"))
     private void sable$tickPlotContainer(final CallbackInfo ci) {
         // PORT-26.3: the sub-level lightmap copies follow client ticks, not the server's game time
@@ -29,6 +35,7 @@ public class MinecraftMixin {
         if (this.sable$dynamicLightLevel != this.level) {
             if (this.sable$dynamicLightLevel != null) {
                 SubLevelDynamicLights.clear(this.sable$dynamicLightLevel);
+                dev.ryanhcode.sable.compatibility.CreateClientLevelCompat.onClientLevelGone(this.sable$dynamicLightLevel);
             }
             this.sable$dynamicLightLevel = this.level;
             dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelLightmaps.invalidate();

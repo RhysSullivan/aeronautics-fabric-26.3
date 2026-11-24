@@ -39,6 +39,21 @@ public final class SubLevelSectionDispatcher {
         return dispatcher == own;
     }
 
+    /**
+     * PORT-26.3: the builders behind Sable's own dispatcher (native memory, closed only explicitly), made once and kept
+     * for the life of the client: a dispatcher made again after {@link #reset()} reuses them, so a reset allocates
+     * nothing. A compile task still running in a disposed dispatcher holds its builder pack from the pool until it
+     * finishes, so the next dispatcher cannot be handed a pack in use; the fixed pack is only used on the main thread.
+     */
+    private static @Nullable RenderBuffers ownBuffers;
+
+    private static RenderBuffers ownBuffers() {
+        if (ownBuffers == null) {
+            ownBuffers = new RenderBuffers(2);
+        }
+        return ownBuffers;
+    }
+
     private static SectionRenderDispatcher ownDispatcher(final Minecraft minecraft) {
         final Options options = minecraft.options;
         final Object models = minecraft.getModelManager().getBlockStateModelSet();
@@ -49,8 +64,7 @@ public final class SubLevelSectionDispatcher {
                     minecraft.getModelManager().getFluidStateModelSet(), minecraft.getBlockColors());
             if (own == null) {
                 // own buffers: with Sodium the game's section buffer pool is allocated empty, so compile tasks would wait forever
-                final RenderBuffers buffers = new RenderBuffers(2);
-                own = new SectionRenderDispatcher(Util.backgroundExecutor(), buffers, compiler, section -> { });
+                own = new SectionRenderDispatcher(Util.backgroundExecutor(), ownBuffers(), compiler, section -> { });
                 // the compile queue sorts by camera distance and stalls on a null camera position
                 own.setCameraPosition(minecraft.gameRenderer.mainCamera().position());
             } else {
@@ -61,6 +75,20 @@ public final class SubLevelSectionDispatcher {
             ownCutoutLeaves = cutoutLeaves;
         }
         return own;
+    }
+
+    /**
+     * PORT-26.3: the client level is changing (a new level or a disconnect). As vanilla disposes its own section dispatcher
+     * then, Sable's is disposed and made again on next use (with the same builders, see {@link #ownBuffers}); otherwise
+     * meshes still staged in it keep the old level's block entities, and through them the old level, for the life of
+     * the game.
+     */
+    public static void reset() {
+        if (own != null) {
+            own.dispose();
+            own = null;
+            ownModels = null;
+        }
     }
 
     /** Keeps Sable's own dispatcher's camera current; call before scheduling compiles. */

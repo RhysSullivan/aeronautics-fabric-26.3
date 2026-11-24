@@ -12,6 +12,7 @@ import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Util;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -55,27 +56,10 @@ public class SubLevelSelector {
         final ActiveSableCompanion helper = Sable.HELPER;
         final Collection<ServerSubLevel> collectedSubLevels = switch (this.type) {
             case ALL -> new HashSet<>(bodies);
-            case NEAREST -> {
-                double closest = Double.MAX_VALUE;
-                ServerSubLevel closestSubLevel = null;
-
-                for (final ServerSubLevel body : bodies) {
-                    final Vec3 sourcePosition = helper.projectOutOfSubLevel(source.getLevel(), source.getPosition());
-                    final double distance = body.logicalPose().position().distance(sourcePosition.x, sourcePosition.y, sourcePosition.z);
-
-                    if (distance < closest) {
-                        closest = distance;
-                        closestSubLevel = body;
-                    }
-                }
-
-                yield Collections.singleton(closestSubLevel);
-            }
-            case RANDOM -> {
-                final List<ServerSubLevel> list = new ArrayList<>(bodies);
-                // PORT-NOTE(mc26.1): Level.random is protected now; use getRandom().
-                yield Collections.singleton(list.get(level.getRandom().nextInt(list.size())));
-            }
+            // PORT-26.3: as vanilla's @n and @r, the modifiers (name=, distance=, ...) filter all bodies first; the nearest
+            // or a random one is taken from what is left (below). Upstream took one body first and filtered it after,
+            // so @n[name=X] matched nothing whenever another body was nearer.
+            case NEAREST, RANDOM -> new ObjectArrayList<>(bodies);
             case INSIDE -> {
                 final ServerSubLevel subLevel = (ServerSubLevel) helper.getContaining(level, source.getPosition());
                 if (subLevel != null) {
@@ -127,14 +111,54 @@ public class SubLevelSelector {
         List<ServerSubLevel> modifiedSubLevels = new ObjectArrayList<>(collectedSubLevels);
 
         final Vector3d position = new Vector3d(source.getPosition().x, source.getPosition().y, source.getPosition().z);
+        // every ordering (the default nearest and an explicit sort=) measures from the source projected out of any body
+        // it is in, so a command run inside a body's plot orders bodies by where it is in the world; filters keep the
+        // source position as given
+        final Vec3 projected = Sable.HELPER.projectOutOfSubLevel(source.getLevel(), source.getPosition());
+        final Vector3d orderFrom = new Vector3d(projected.x, projected.y, projected.z);
         this.modifiers.sort(
                 Comparator.comparingInt(a -> a.first().getFilterPriority().ordinal())
         );
+
+        // PORT-26.3: @n and @r work as vanilla's: the position and filter modifiers (name=, distance=, ...) run over all
+        // bodies first; then the bodies are ordered (sort= when given, otherwise nearest for @n and random for @r); then
+        // limit= (1 when not given) takes from the front. Upstream chose one body before filtering.
+        final boolean chooses = this.type == SubLevelSelectorType.NEAREST || this.type == SubLevelSelectorType.RANDOM;
+        boolean userSort = false;
+        boolean userLimit = false;
         for (final Pair<SubLevelSelectorModifierType, SubLevelSelectorModifierType.Modifier> modifier : this.modifiers) {
-            modifiedSubLevels = modifier.right().apply(modifiedSubLevels, position);
+            final SubLevelSelectorModifierType.FilterPriority priority = modifier.first().getFilterPriority();
+            userSort |= priority == SubLevelSelectorModifierType.FilterPriority.SORTING;
+            userLimit |= priority == SubLevelSelectorModifierType.FilterPriority.SORTING_SELECTION;
         }
 
+        boolean ordered = false;
+        for (final Pair<SubLevelSelectorModifierType, SubLevelSelectorModifierType.Modifier> modifier : this.modifiers) {
+            if (chooses && !ordered && !userSort
+                    && modifier.first().getFilterPriority().ordinal() >= SubLevelSelectorModifierType.FilterPriority.SORTING.ordinal()) {
+                this.defaultOrder(modifiedSubLevels, orderFrom, level);
+                ordered = true;
+            }
+            final boolean ordering = modifier.first().getFilterPriority() == SubLevelSelectorModifierType.FilterPriority.SORTING;
+            modifiedSubLevels = modifier.right().apply(modifiedSubLevels, ordering ? orderFrom : position);
+        }
+        if (chooses && !ordered && !userSort) {
+            this.defaultOrder(modifiedSubLevels, orderFrom, level);
+        }
+        if (chooses && !userLimit && modifiedSubLevels.size() > 1) {
+            modifiedSubLevels = new ObjectArrayList<>(modifiedSubLevels.subList(0, 1));
+        }
         return modifiedSubLevels;
+    }
+
+    /** @n: nearest first, from the source projected out of any body it is in; @r: shuffled. */
+    private void defaultOrder(final List<ServerSubLevel> bodies, final Vector3d from, final ServerLevel level) {
+        if (this.type == SubLevelSelectorType.NEAREST) {
+            bodies.sort(Comparator.comparingDouble(body -> body.logicalPose().position().distanceSquared(from)));
+        } else {
+            // PORT-NOTE(mc26.1): Level.random is protected now; use getRandom().
+            Util.shuffle(bodies, level.getRandom());
+        }
     }
 
 }

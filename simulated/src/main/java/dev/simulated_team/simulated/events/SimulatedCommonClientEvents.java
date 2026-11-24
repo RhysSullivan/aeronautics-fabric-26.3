@@ -151,8 +151,18 @@ public class SimulatedCommonClientEvents {
     /**
      * Called at the end of a ticking event for the given level
      */
+    // PORT-26.3: the client level of the last tick; when it changes (dimension change, disconnect) the old one is
+    // dropped from every CommonLevelAttached, which would otherwise keep it in memory until the game closes
+    private static Level lastClientLevel;
+
     public static void postClientTick(final Minecraft instance) {
         SimulatedClient.PHYSICS_STAFF_CLIENT_HANDLER.tick();
+        if (instance.level != lastClientLevel) {
+            if (lastClientLevel != null) {
+                dev.simulated_team.simulated.compat.create.CommonLevelAttached.invalidateLevel(lastClientLevel);
+            }
+            lastClientLevel = instance.level;
+        }
 
 	    if (instance.player == null || instance.level == null) {
 		    return;

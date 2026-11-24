@@ -73,6 +73,8 @@ public abstract class LevelPlot {
      * All loaded chunkholders in this plot.
      */
     private final List<PlotChunkHolder> loadedChunks = new ObjectArrayList<>();
+    /** PORT-26.3: counts changes that can change the light this plot casts (see {@link #bumpLightChange}). */
+    private int lightChangeCount;
 
     /**
      * All block entity actors within this plot
@@ -280,6 +282,7 @@ public abstract class LevelPlot {
 
         this.loadedChunks.add(holder);
         this.chunks[localChunkPos.z() << this.logSize | localChunkPos.x()] = holder;
+        this.bumpLightChange();
 
         this.updateBoundingBox();
     }
@@ -297,6 +300,20 @@ public abstract class LevelPlot {
      */
     public ChunkPos getCenterChunk() {
         return new ChunkPos((this.plotPos.x() << this.logSize) + (1 << (this.logSize - 1)), (this.plotPos.z() << this.logSize) + (1 << (this.logSize - 1)));
+    }
+
+    /**
+     * PORT-26.3: a block in this plot changed its light properties (emission, light blocking; vanilla's
+     * {@code LevelChunk.setBlockState} asks for the light engine exactly then), or chunks were added, replaced or removed.
+     * {@code SubLevelDynamicLights} recomputes the light this plot casts into the world only after such a change or a
+     * pose change.
+     */
+    public void bumpLightChange() {
+        this.lightChangeCount++;
+    }
+
+    public int lightChangeCount() {
+        return this.lightChangeCount;
     }
 
     public Collection<PlotChunkHolder> getLoadedChunks() {
@@ -376,6 +393,7 @@ public abstract class LevelPlot {
 
         this.loadedChunks.clear();
         this.localBounds = null;
+        this.bumpLightChange();
     }
 
     protected abstract void onRemoveChunkHolder(final LevelChunk levelChunk);

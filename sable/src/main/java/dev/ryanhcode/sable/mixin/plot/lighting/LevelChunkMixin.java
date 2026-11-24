@@ -19,18 +19,22 @@ public class LevelChunkMixin {
     @Shadow @Final private Level level;
 
     /**
-     * Return the plot light engine if we're in a plot
+     * Return the plot light engine if we're in a plot (server); on both sides, note the light change on the plot
      */
     @Redirect(method ="setBlockState", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/chunk/ChunkSource;getLightEngine()Lnet/minecraft/world/level/lighting/LevelLightEngine;"))
     public LevelLightEngine sable$getLightEngine(final ChunkSource instance) {
         final SubLevelContainer container = SubLevelContainer.getContainer(this.level);
 
-        if (container != null && this.level instanceof ServerLevel) {
+        if (container != null) {
             final LevelChunk chunk = (LevelChunk) (Object) this;
             final LevelPlot plot = container.getPlot(chunk.getPos());
 
             if (plot != null) {
-                return plot.getLightEngine();
+                // PORT-26.3: vanilla asks for the light engine only when a block's light properties changed
+                plot.bumpLightChange();
+                if (this.level instanceof ServerLevel) {
+                    return plot.getLightEngine();
+                }
             }
         }
 

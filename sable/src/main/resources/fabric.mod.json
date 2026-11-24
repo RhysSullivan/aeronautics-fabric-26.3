@@ -38,7 +38,7 @@
     "lithium:options": {
       "mixin.entity.collisions.unpushable_cramming": false,
       "mixin.world.chunk_access": false,
-      "mixin.world.chunk_ticking": false,
+      "mixin.world.chunk_ticking": true,
       "mixin.world.tick_scheduler": false
     }
   },
