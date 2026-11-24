@@ -141,7 +141,8 @@ public final class SubLevelFlywheelEmbeddings {
             }
             update(subLevel, entry);
             // the sky part of a ship's light follows where the ship is; relight its visuals when that changes
-            final int sky = subLevel.getLatestSkyLightScale();
+            // (PORT-26.3: and the world block light floor; both in one key)
+            final int sky = subLevel.getLatestSkyLightScale() * 16 + subLevel.getBlockLightFloor();
             if (entry.skyLightScale != sky) {
                 if (entry.skyLightScale != -1) {
                     synchronized (entry.blockEntities()) {

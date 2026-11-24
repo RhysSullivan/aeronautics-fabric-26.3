@@ -47,6 +47,9 @@ public final class BodyDamping {
     public static void apply(final RigidBodyHandle handle, final float linear, final float angular, final double timeStep) {
         final Vector3d v = handle.getLinearVelocity(new Vector3d());
         final Vector3d w = handle.getAngularVelocity(new Vector3d());
+        if (!v.isFinite() || !w.isFinite()) {
+            return; // never feed a non-finite velocity back to the engine (Infinity * -0.0 is NaN)
+        }
         // add -(1 - exp(-k dt)) of the velocity: the result is exp(-k dt) times the velocity
         v.mul(-(1.0 - Math.exp(-linear * timeStep)));
         w.mul(-(1.0 - Math.exp(-angular * timeStep)));

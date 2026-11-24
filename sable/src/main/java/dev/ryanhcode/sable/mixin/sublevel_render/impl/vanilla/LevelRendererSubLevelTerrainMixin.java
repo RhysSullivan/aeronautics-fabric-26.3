@@ -255,8 +255,8 @@ public abstract class LevelRendererSubLevelTerrainMixin {
                     final var box = subLevel.boundingBox();
                     final var c = box.center(new org.joml.Vector3d());
                     final var lvl = this.sable$level();
-                    Sable.LOGGER.info("PORT-26.3: sub-level sky light scale {} at {} {} {} (bounds y {}..{}); world sky at centre+0.1 {}, block light {}",
-                            subLevel.getLatestSkyLightScale(), String.format(java.util.Locale.ROOT, "%.1f", c.x()), String.format(java.util.Locale.ROOT, "%.1f", c.y()),
+                    Sable.LOGGER.info("PORT-26.3: sub-level sky light scale {} (block light floor {}) at {} {} {} (bounds y {}..{}); world sky at centre+0.1 {}, block light {}",
+                            subLevel.getLatestSkyLightScale(), subLevel.getBlockLightFloor(), String.format(java.util.Locale.ROOT, "%.1f", c.x()), String.format(java.util.Locale.ROOT, "%.1f", c.y()),
                             String.format(java.util.Locale.ROOT, "%.1f", c.z()), String.format(java.util.Locale.ROOT, "%.1f", box.minY()), String.format(java.util.Locale.ROOT, "%.1f", box.maxY()),
                             lvl.getBrightness(net.minecraft.world.level.LightLayer.SKY, BlockPos.containing(c.x(), c.y() + 0.1, c.z())),
                             lvl.getBrightness(net.minecraft.world.level.LightLayer.BLOCK, BlockPos.containing(c.x(), c.y() + 0.1, c.z())));
@@ -282,7 +282,7 @@ public abstract class LevelRendererSubLevelTerrainMixin {
                 // real one, the dark-hull symptom on purpose (the brightness test's positive control)
                 final int sable$forcedScale = Integer.getInteger("sable.debug.hullSkyScale", -1);
                 final GpuTextureView lightmap = dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelLightmaps.prepare(
-                        sable$forcedScale >= 0 ? sable$forcedScale : subLevel.getLatestSkyLightScale());
+                        sable$forcedScale >= 0 ? sable$forcedScale : subLevel.getLatestSkyLightScale(), subLevel.getBlockLightFloor());
                 // PORT-26.3: vanilla's draw takes "byte offset / vertex size" as each section's base vertex, which is only
                 // right when the section arena is aligned to the meshes' vertex size. Sable's own arena takes its alignment
                 // from the vertex format when it is built, which can be Iris's 52-byte one (built during a level render with a

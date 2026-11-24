@@ -68,6 +68,8 @@ public class ClientSubLevel extends SubLevel implements ClientSubLevelAccess {
      * Latest sub-level sky light scaling
      */
     private int latestSkyLightScale = -1;
+    /** PORT-26.3 world block light where the body is drawn: the floor in use (eased toward the sample, one level a tick). */
+    private int blockLightFloor = 0;
 
     /**
      * Last partial tick used for rendering interpolation
@@ -141,6 +143,8 @@ public class ClientSubLevel extends SubLevel implements ClientSubLevelAccess {
         }
 
         this.latestSkyLightScale = this.computeSubLevelSkyLight(this.logicalPose());
+        final int blockTarget = this.computeSubLevelBlockLight(this.logicalPose());
+        this.blockLightFloor += Integer.signum(blockTarget - this.blockLightFloor);
     }
 
     public void forceUpdateBounds() {
@@ -162,10 +166,50 @@ public class ClientSubLevel extends SubLevel implements ClientSubLevelAccess {
     public int scaleLightColor(int lightColor) {
         final int skyLightScale = this.getLatestSkyLightScale();
 
-        final int newSkyLight = (int) ((lightColor >> 20) * (skyLightScale / 15.0f));
-        lightColor = (lightColor & 0xfffff) | (newSkyLight << 20);
+        final int plotSky = lightColor >> 20 & 0xF;
+        final int newSkyLight = (int) (plotSky * (skyLightScale / 15.0f));
+        // PORT-26.3: the world's block light where the body is drawn, as a floor, on faces as open as the plot says
+        // (plot sky light: an exposed face takes all of it, a closed room none), the same rule as its terrain lightmap
+        final int blockRaw = Math.max(lightColor & 0xffff, (this.blockLightFloor * plotSky / 15) << 4);
+        lightColor = (lightColor & 0xf0000) | blockRaw | (newSkyLight << 20);
 
         return lightColor;
+    }
+
+    /** PORT-26.3: the world block light floor in use for this body (0 to 15; 0 away from world light). */
+    public int getBlockLightFloor() {
+        return this.blockLightFloor;
+    }
+
+    /**
+     * PORT-26.3: the world's block light where this body is drawn, its own projected lights left out: one point for a
+     * small body (the brightest of it and one block above and below), otherwise the mean of the box's centre and its
+     * four corners at the centre's height (so one lantern by one end of a long ship does not light the whole hull).
+     */
+    public int computeSubLevelBlockLight(final Pose3dc pose) {
+        final ClientLevel level = this.getLevel();
+        final dev.ryanhcode.sable.render.SubLevelDynamicLights.OwnLightMask own =
+                dev.ryanhcode.sable.render.SubLevelDynamicLights.getOwnLightMask(level.getLightEngine(), this);
+        if (this.boundingBox().volume() < 9) {
+            final Vector3dc pos = pose.position();
+            return Math.max(this.worldBlockLight(level, own, pos.x(), pos.y(), pos.z()),
+                    Math.max(this.worldBlockLight(level, own, pos.x(), pos.y() + 1, pos.z()), this.worldBlockLight(level, own, pos.x(), pos.y() - 1, pos.z())));
+        }
+        final BoundingBox3dc box = this.boundingBox();
+        final Vector3dc center = box.center(new Vector3d());
+        final double y = center.y() + 0.1;
+        final int sum = this.worldBlockLight(level, own, center.x(), y, center.z())
+                + this.worldBlockLight(level, own, box.minX(), y, box.minZ()) + this.worldBlockLight(level, own, box.maxX(), y, box.minZ())
+                + this.worldBlockLight(level, own, box.minX(), y, box.maxZ()) + this.worldBlockLight(level, own, box.maxX(), y, box.maxZ());
+        return (sum + 2) / 5;
+    }
+
+    private int worldBlockLight(final ClientLevel level, final dev.ryanhcode.sable.render.SubLevelDynamicLights.OwnLightMask own,
+                                final double x, final double y, final double z) {
+        final BlockPos pos = BlockPos.containing(x, y, z);
+        final int light = level.getBrightness(LightLayer.BLOCK, pos);
+        // light the body itself projects into the world is its own, already in its plot light
+        return light <= own.upperBound(pos.asLong()) ? 0 : light;
     }
 
     /**

@@ -24,11 +24,14 @@ public class MinecraftMixin {
 
     @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/tutorial/Tutorial;onLookAt(Lnet/minecraft/client/multiplayer/ClientLevel;Lnet/minecraft/world/phys/HitResult;)V"))
     private void sable$tickPlotContainer(final CallbackInfo ci) {
+        // PORT-26.3: the sub-level lightmap copies follow client ticks, not the server's game time
+        dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelLightmaps.onClientTick();
         if (this.sable$dynamicLightLevel != this.level) {
             if (this.sable$dynamicLightLevel != null) {
                 SubLevelDynamicLights.clear(this.sable$dynamicLightLevel);
             }
             this.sable$dynamicLightLevel = this.level;
+            dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelLightmaps.invalidate();
         }
 
         if (this.level != null) {

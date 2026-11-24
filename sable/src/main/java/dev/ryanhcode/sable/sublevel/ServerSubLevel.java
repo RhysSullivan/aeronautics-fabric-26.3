@@ -579,6 +579,10 @@ public class ServerSubLevel extends SubLevel implements PhysicsPipelineBody {
      * @param userDataTag the user-data compound tag
      */
     public void setUserDataTag(final CompoundTag userDataTag) {
+        // PORT-26.3 readable pose: a computed pose is never kept, also when loaded or supplied from outside the accessor
+        if (userDataTag != null && BodyPose.readable(userDataTag)) {
+            userDataTag.remove(BodyPose.KEY);
+        }
         this.userDataTag = userDataTag;
     }
 
