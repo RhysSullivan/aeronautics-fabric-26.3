@@ -129,6 +129,9 @@ public class ServerSubLevel extends SubLevel implements PhysicsPipelineBody {
     /** PORT-26.3 rider weight: this tick's riders' feet (plot coordinates) and weight, or null when none. */
     private java.util.@org.jetbrains.annotations.Nullable List<org.joml.Vector3dc> riderFeet;
     private float riderWeight;
+    private boolean riderHold;
+    private float linearDamping;
+    private float angularDamping;
     /**
      * If individual queued forces should be kept track of
      */
@@ -580,15 +583,37 @@ public class ServerSubLevel extends SubLevel implements PhysicsPipelineBody {
     }
 
     /** PORT-26.3 rider weight: set once per server tick by {@link RiderWeight#gather}. */
-    public void setRiders(final java.util.@org.jetbrains.annotations.Nullable List<org.joml.Vector3dc> feet, final float weight) {
+    public void setRiders(final java.util.@org.jetbrains.annotations.Nullable List<org.joml.Vector3dc> feet, final float weight, final boolean hold) {
         this.riderFeet = feet;
         this.riderWeight = weight;
+        this.riderHold = hold;
+    }
+
+    /** PORT-26.3 damping: set once per server tick by {@link BodyDamping#gather}. */
+    public void setDamping(final float linear, final float angular) {
+        this.linearDamping = linear;
+        this.angularDamping = angular;
+    }
+
+    /** PORT-26.3 damping: each physics substep. Does nothing for a body without the keys. */
+    public void applyDamping(final SubLevelPhysicsSystem physicsSystem, final double timeStep) {
+        if (this.linearDamping > 0.0f || this.angularDamping > 0.0f) {
+            final dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle handle = physicsSystem.getPhysicsHandle(this);
+            if (handle != null && handle.isValid()) {
+                BodyDamping.apply(handle, this.linearDamping, this.angularDamping, timeStep);
+            }
+        }
+    }
+
+    /** PORT-26.3 rider weight: the riders counted this tick (0 for a body without the key). */
+    public int riderCount() {
+        return this.riderFeet != null ? this.riderFeet.size() : 0;
     }
 
     /** PORT-26.3 rider weight: each physics substep. Does nothing for a body without riders. */
     public void applyRiderWeight(final SubLevelPhysicsSystem physicsSystem, final org.joml.Vector3dc worldGravity, final double timeStep) {
         if (this.riderFeet != null) {
-            RiderWeight.apply(this, this.riderFeet, this.riderWeight, physicsSystem.getPhysicsHandle(this), worldGravity, timeStep);
+            RiderWeight.apply(this, this.riderFeet, this.riderWeight, this.riderHold, physicsSystem.getPhysicsHandle(this), worldGravity, timeStep);
         }
     }
 

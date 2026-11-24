@@ -187,6 +187,11 @@ public class RigidBodyHandle {
         this.physicsSystem.getPipeline().addLinearAndAngularVelocity(this.body, linearVelocity, angularVelocity);
     }
 
+    /** PORT-26.3: as above; a sleeping body is left asleep (and unchanged) when {@code wakeUp} is false. */
+    public void addLinearAndAngularVelocity(final Vector3dc linearVelocity, final Vector3dc angularVelocity, final boolean wakeUp) {
+        this.physicsSystem.getPipeline().addLinearAndAngularVelocity(this.body, linearVelocity, angularVelocity, wakeUp);
+    }
+
     /**
      * Teleports the physics pipeline body to a given position.
      *

@@ -481,6 +481,12 @@ public class RapierPhysicsPipeline implements PhysicsPipeline {
     }
 
     @Override
+    public void addLinearAndAngularVelocity(final PhysicsPipelineBody body, final Vector3dc linearVelocity, final Vector3dc angularVelocity, final boolean wakeUp) {
+        this.assertBodyValid(body);
+        Rapier3D.addLinearAngularVelocities(this.scene.handle(), Rapier3D.getID(body), linearVelocity.x(), linearVelocity.y(), linearVelocity.z(), angularVelocity.x(), angularVelocity.y(), angularVelocity.z(), wakeUp);
+    }
+
+    @Override
     public Vector3d getLinearVelocity(final PhysicsPipelineBody body, final Vector3d dest) {
         this.assertBodyValid(body);
         Rapier3D.getLinearVelocity(this.scene.handle(), Rapier3D.getID(body), this.poseCache);

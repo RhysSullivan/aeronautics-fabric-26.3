@@ -29,10 +29,14 @@ import java.util.UUID;
  * body at most. The riders are gathered once per server tick
  * on the server thread; the substeps of that tick reuse them.
  *
- * <p>Data pack use: {@code data merge sub_level <selector> {rider_weight:1.0f}}; remove the key to switch it off.
+ * <p>Data pack use: {@code data merge sub_level <selector> {rider_weight:1.0f}}; remove the key to switch it off. With
+ * {@code rider_weight_hold:1b} as well, the riders tip the body without making it sink: their total weight is pushed
+ * back up through its centre of mass.
  */
 public final class RiderWeight {
     public static final String KEY = "rider_weight";
+    /** With {@code rider_weight_hold:1b} the riders' total weight is also pushed up at the body's centre of mass. */
+    public static final String HOLD_KEY = "rider_weight_hold";
     public static final float MIN_WEIGHT = 0.0f;
     public static final float MAX_WEIGHT = 64.0f;
 
@@ -85,7 +89,7 @@ public final class RiderWeight {
             }
             final float weight = weightOf(subLevel);
             if (weight <= 0.0f) {
-                subLevel.setRiders(null, 0.0f);
+                subLevel.setRiders(null, 0.0f, false);
                 continue;
             }
             if (counted == null) {
@@ -104,7 +108,7 @@ public final class RiderWeight {
                 feet.add(pose.transformPositionInverse(new Vector3d(player.getX(), player.getY(), player.getZ())));
                 counted.add(player.getUUID());
             }
-            subLevel.setRiders(feet.isEmpty() ? null : feet, weight);
+            subLevel.setRiders(feet.isEmpty() ? null : feet, weight, subLevel.getUserDataTag().getBooleanOr(HOLD_KEY, false));
         }
     }
 
@@ -147,7 +151,7 @@ public final class RiderWeight {
     }
 
     /** Each physics substep, for a body with riders: their weight at their feet. */
-    public static void apply(final ServerSubLevel subLevel, final @Nullable List<Vector3dc> feet, final float weight,
+    public static void apply(final ServerSubLevel subLevel, final @Nullable List<Vector3dc> feet, final float weight, final boolean hold,
                              final RigidBodyHandle handle, final Vector3dc worldGravity, final double timeStep) {
         if (feet == null || weight <= 0.0f) {
             return;
@@ -157,6 +161,11 @@ public final class RiderWeight {
                 .transformInverse(new Vector3d(worldGravity).mul(weight * timeStep));
         for (final Vector3dc point : feet) {
             handle.applyImpulseAtPoint(point, impulse);
+        }
+        if (hold) {
+            // the same total, reversed, through the centre of mass: no net force from the riders (the body does not sink
+            // or rise), the torque about the centre of mass unchanged
+            handle.applyLinearImpulse(impulse.mul(-feet.size()));
         }
     }
 }

@@ -4,6 +4,7 @@ import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.ryanhcode.sable.api.command.SubLevelArgumentType;
+import dev.ryanhcode.sable.sublevel.BodyPose;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -43,12 +44,23 @@ public class SubLevelDataAccessor implements DataAccessor {
 
     @Override
     public void setData(final CompoundTag compoundTag) {
+        // PORT-26.3 readable pose: the computed compound is never stored (data merge, modify and remove all come here)
+        final CompoundTag current = this.subLevel.getUserDataTag();
+        if (BodyPose.readable(compoundTag) || (current != null && BodyPose.readable(current))) {
+            compoundTag.remove(BodyPose.KEY);
+        }
         this.subLevel.setUserDataTag(compoundTag);
     }
 
     @Override
     public CompoundTag getData() {
         final CompoundTag userTag = this.subLevel.getUserDataTag();
+        // PORT-26.3 readable pose: only for a body that asks for it, a copy with the pose computed now
+        if (userTag != null && BodyPose.readable(userTag)) {
+            final CompoundTag withPose = userTag.copy();
+            withPose.put(BodyPose.KEY, BodyPose.compute(this.subLevel));
+            return withPose;
+        }
         return userTag != null ? userTag : new CompoundTag();
     }
 

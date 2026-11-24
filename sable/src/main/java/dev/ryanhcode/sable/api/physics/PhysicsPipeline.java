@@ -179,6 +179,14 @@ public interface PhysicsPipeline {
     }
 
     /**
+     * PORT-26.3: as {@link #addLinearAndAngularVelocity(PhysicsPipelineBody, Vector3dc, Vector3dc)}, but a sleeping
+     * body is left asleep (and unchanged) when {@code wakeUp} is false.
+     */
+    default void addLinearAndAngularVelocity(final PhysicsPipelineBody body, final Vector3dc linearVelocity, final Vector3dc angularVelocity, final boolean wakeUp) {
+        this.addLinearAndAngularVelocity(body, linearVelocity, angularVelocity);
+    }
+
+    /**
      * Resets the velocity of a physics pipeline body
      *
      * @param body the physics pipeline body to reset the velocity of
