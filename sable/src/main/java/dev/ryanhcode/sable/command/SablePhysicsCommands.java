@@ -33,6 +33,7 @@ public class SablePhysicsCommands {
      * Adds the following commands:
      * <ul>
      *     <li>{@code /sable physics impulse <sub_level> <linear|angular> <impulse> <global>}</li>
+ *     <li>{@code /sable physics impulse <sub_level> point <world position> <impulse> <global|local>} (PORT-26.3)</li>
      *     <li>{@code /sable physics rotation <sub_level> <add> <axis/entity> <rotation> <global>}</li>
      *     <li>{@code /sable physics rotation <sub_level> <set> <axis/entity> <rotation>}</li>
      *     <li>{@code /sable physics translation <sub_level> <add> <rotation> <global>}</li>
@@ -54,6 +55,20 @@ public class SablePhysicsCommands {
                                                         .executes((ctx) ->
                                                                 SablePhysicsCommands.executeLinearImpulseCommand(ctx, false)))
                                         ))
+
+                                // PORT-26.3 addition: an impulse at a point, both in world coordinates. The point is a world
+                                // position (where the body is seen, ~ ~ ~ works), the impulse a world vector by default.
+                                .then(Commands.literal("point")
+                                        .then(Commands.argument("position", net.minecraft.commands.arguments.coordinates.Vec3Argument.vec3(false))
+                                                .then(Commands.argument("impulse", Vec3ArgumentAbsolute.vec3())
+                                                        .executes((ctx) ->
+                                                                SablePhysicsCommands.executePointImpulseCommand(ctx, true))
+                                                        .then(Commands.literal("global")
+                                                                .executes((ctx) ->
+                                                                        SablePhysicsCommands.executePointImpulseCommand(ctx, true)))
+                                                        .then(Commands.literal("local")
+                                                                .executes((ctx) ->
+                                                                        SablePhysicsCommands.executePointImpulseCommand(ctx, false))))))
 
                                 .then(Commands.literal("angular")
                                         .then(Commands.argument("impulse", Vec3ArgumentAbsolute.vec3())
@@ -125,6 +140,54 @@ public class SablePhysicsCommands {
         SableCommandHelper.sendSuccessDescribingSubLevelsAtIndex("commands.sable.physics.impulse.linear.success", ctx, subLevels, 1,
                 getGlobalComponent(global), impulse.x + ", " + impulse.y + ", " + impulse.z);
         return 0;
+    }
+
+    /**
+     * PORT-26.3 addition: {@code /sable physics impulse <sub_level> point <position> <impulse> [global|local]}. The
+     * position is in world coordinates; the impulse is a world vector ({@code global}, the default) or in the body's own
+     * frame ({@code local}). Pushing at a point off the centre of mass also turns the body.
+     */
+    private static int executePointImpulseCommand(final CommandContext<CommandSourceStack> ctx, final boolean global) throws CommandSyntaxException {
+        final SubLevelPhysicsSystem system = SableCommandHelper.requireSubLevelPhysicsSystem(ctx);
+
+        final Collection<ServerSubLevel> subLevels = SubLevelArgumentType.getSubLevels(ctx, "sub_level");
+        final Vec3 position = net.minecraft.commands.arguments.coordinates.Vec3Argument.getVec3(ctx, "position");
+        final Vec3 impulse = ctx.getArgument("impulse", Vec3.class);
+
+        if (subLevels.isEmpty()) {
+            throw SableCommandHelper.ERROR_NO_SUB_LEVELS_FOUND.create();
+        }
+
+        // refuse non-finite input (an impulse of 1e309 parses to infinity) before anything reaches any body
+        if (!finite(position) || !finite(impulse)) {
+            ctx.getSource().sendFailure(net.minecraft.network.chat.Component.literal("Position and impulse must be finite numbers"));
+            return 0;
+        }
+        final java.util.List<Vec3[]> applied = new java.util.ArrayList<>();
+        for (final ServerSubLevel subLevel : subLevels) {
+            final Vec3 localPoint = subLevel.logicalPose().transformPositionInverse(position);
+            final Vec3 localImpulse = global ? subLevel.logicalPose().transformNormalInverse(impulse) : impulse;
+            if (!finite(localPoint) || !finite(localImpulse)) {
+                ctx.getSource().sendFailure(net.minecraft.network.chat.Component.literal("Position and impulse must be finite numbers"));
+                return 0;
+            }
+            applied.add(new Vec3[]{localPoint, localImpulse});
+        }
+        int i = 0;
+        for (final ServerSubLevel subLevel : subLevels) {
+            final Vec3[] v = applied.get(i++);
+            system.getPhysicsHandle(subLevel).applyImpulseAtPoint(v[0], v[1]);
+        }
+
+        // plain text: clients on older jars have no translation for a new key
+        ctx.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("Applied " + (global ? "global" : "local")
+                + " impulse " + impulse.x + ", " + impulse.y + ", " + impulse.z + " at " + position.x + ", " + position.y + ", " + position.z
+                + " to " + subLevels.size() + " sub-level(s)"), true);
+        return subLevels.size();
+    }
+
+    private static boolean finite(final Vec3 v) {
+        return Double.isFinite(v.x) && Double.isFinite(v.y) && Double.isFinite(v.z);
     }
 
     private static int executeAngularImpulseCommand(final CommandContext<CommandSourceStack> ctx, final boolean global) throws CommandSyntaxException {

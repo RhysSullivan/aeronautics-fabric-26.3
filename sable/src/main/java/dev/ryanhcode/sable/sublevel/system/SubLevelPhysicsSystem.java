@@ -239,6 +239,9 @@ public class SubLevelPhysicsSystem implements SubLevelObserver {
 
     private void tickPipelinePhysics(final ServerSubLevelContainer container) {
         this.pipeline.prePhysicsTicks();
+        // PORT-26.3 rider weight (opt-in per body): riders gathered once per tick, applied each substep below
+        dev.ryanhcode.sable.sublevel.RiderWeight.gather(this.level, container);
+        final Vector3d riderGravity = DimensionPhysicsData.getGravity(this.level);
 
         for (this.currentSubstep = 0; this.currentSubstep < this.config.substepsPerTick; this.currentSubstep++) {
             final double substepTimeStep = 1.0 / 20.0 / this.config.substepsPerTick;
@@ -263,6 +266,7 @@ public class SubLevelPhysicsSystem implements SubLevelObserver {
             for (final ServerSubLevel subLevel : container.getAllSubLevels()) {
                 if (subLevel.isRemoved()) continue;
                 subLevel.applyQueuedForces(this, this.getPhysicsHandle(subLevel), substepTimeStep);
+                subLevel.applyRiderWeight(this, riderGravity, substepTimeStep);
             }
 
             IN_PHYSICS_STEP = true;

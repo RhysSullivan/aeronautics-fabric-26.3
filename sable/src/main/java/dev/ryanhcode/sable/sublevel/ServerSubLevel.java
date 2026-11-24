@@ -125,6 +125,10 @@ public class ServerSubLevel extends SubLevel implements PhysicsPipelineBody {
      */
     @Nullable
     private CompoundTag userDataTag;
+
+    /** PORT-26.3 rider weight: this tick's riders' feet (plot coordinates) and weight, or null when none. */
+    private java.util.@org.jetbrains.annotations.Nullable List<org.joml.Vector3dc> riderFeet;
+    private float riderWeight;
     /**
      * If individual queued forces should be kept track of
      */
@@ -573,6 +577,19 @@ public class ServerSubLevel extends SubLevel implements PhysicsPipelineBody {
      */
     public void setUserDataTag(final CompoundTag userDataTag) {
         this.userDataTag = userDataTag;
+    }
+
+    /** PORT-26.3 rider weight: set once per server tick by {@link RiderWeight#gather}. */
+    public void setRiders(final java.util.@org.jetbrains.annotations.Nullable List<org.joml.Vector3dc> feet, final float weight) {
+        this.riderFeet = feet;
+        this.riderWeight = weight;
+    }
+
+    /** PORT-26.3 rider weight: each physics substep. Does nothing for a body without riders. */
+    public void applyRiderWeight(final SubLevelPhysicsSystem physicsSystem, final org.joml.Vector3dc worldGravity, final double timeStep) {
+        if (this.riderFeet != null) {
+            RiderWeight.apply(this, this.riderFeet, this.riderWeight, physicsSystem.getPhysicsHandle(this), worldGravity, timeStep);
+        }
     }
 
     @Override

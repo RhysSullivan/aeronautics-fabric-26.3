@@ -183,6 +183,8 @@
         "punching.ItemInvoker",
         "recoil.ProjectileDispenseBehaviorMixin",
         "respawn_point.ServerPlayerMixin",
+        "rider_weight.ServerGamePacketListenerRiderMixin",
+        "rider_weight.ServerPlayerRiderMixin",
         "respawn_point.sleeping.LivingEntityMixin",
         "respawn_point.sleeping.ServerPlayerMixin",
         "sculk_vibrations.EuclideanGameEventListenerRegistryMixin",
