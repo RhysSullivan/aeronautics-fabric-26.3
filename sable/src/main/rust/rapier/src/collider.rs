@@ -5,7 +5,7 @@ use rapier3d::geometry::{Shape, ShapeType, SharedShape, TypedShape};
 use rapier3d::glamx::{DVec3, IVec3};
 use rapier3d::parry::bounding_volume::{Aabb, BoundingSphere};
 use rapier3d::prelude::*;
-use std::f32::consts::PI;
+use std::f64::consts::PI;
 
 const WORLD_SIZE: Real = 30_000_000.0;
 
@@ -33,8 +33,8 @@ impl LevelCollider {
 
 pub fn compute_local_aabb_from_bounds(min: IVec3, max: IVec3, com: DVec3) -> Aabb {
     Aabb::new(
-        (min.as_dvec3() - com).as_vec3(),
-        (max.as_dvec3() + 1.0 - com).as_vec3(),
+        min.as_dvec3() - com,
+        max.as_dvec3() + 1.0 - com,
     )
 }
 
@@ -88,8 +88,8 @@ impl Shape for LevelCollider {
     fn compute_local_aabb(&self) -> Aabb {
         if self.is_static {
             Aabb::new(
-                Vec3::new(-WORLD_SIZE, -WORLD_SIZE, -WORLD_SIZE),
-                Vec3::new(WORLD_SIZE, WORLD_SIZE, WORLD_SIZE),
+                DVec3::new(-WORLD_SIZE, -WORLD_SIZE, -WORLD_SIZE),
+                DVec3::new(WORLD_SIZE, WORLD_SIZE, WORLD_SIZE),
             )
         } else {
             self.cached_aabb
@@ -99,9 +99,9 @@ impl Shape for LevelCollider {
 
     fn compute_local_bounding_sphere(&self) -> BoundingSphere {
         if self.is_static {
-            BoundingSphere::new(Vec3::ZERO, WORLD_SIZE)
+            BoundingSphere::new(DVec3::ZERO, WORLD_SIZE)
         } else {
-            BoundingSphere::new(Vec3::ZERO, 1.0)
+            BoundingSphere::new(DVec3::ZERO, 1.0)
         }
     }
 
@@ -117,7 +117,7 @@ impl Shape for LevelCollider {
         MassProperties {
             inv_mass: 0.0,
             inv_principal_inertia: AngVector::new(0.0, 0.0, 0.0),
-            local_com: Vec3::ZERO,
+            local_com: DVec3::ZERO,
             principal_inertia_local_frame: Default::default(),
         }
     }

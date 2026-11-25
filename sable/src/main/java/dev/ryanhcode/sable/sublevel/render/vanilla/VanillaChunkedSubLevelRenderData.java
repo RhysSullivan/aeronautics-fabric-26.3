@@ -188,45 +188,23 @@ public class VanillaChunkedSubLevelRenderData implements SubLevelRenderData {
         }
 
         final ProfilerFiller profiler = net.minecraft.util.profiling.Profiler.get();
-        final Vector3d cameraPos = JOMLConversion.atCenterOf(camera.blockPosition()).sub(8, 8, 8);
-        this.subLevel.logicalPose().transformPositionInverse(cameraPos);
-
         final net.minecraft.client.multiplayer.ClientLevel level = Minecraft.getInstance().level;
         final long syncStart = System.nanoTime();
         int syncSections = 0;
-        for (final java.util.Map.Entry<SectionRenderDispatcher.RenderSection, Boolean> dirty : this.dirtyRenderSections.entrySet()) {
-            final SectionRenderDispatcher.RenderSection renderSection = dirty.getKey();
-            final boolean dirtyFromPlayer = dirty.getValue();
-
-            boolean buildSync = false;
-            if (chunkUpdates == PrioritizeChunkUpdates.NEARBY) {
-                final BlockPos origin = renderSection.getRenderOrigin();
-                buildSync = cameraPos.distanceSquared(origin.getX(), origin.getY(), origin.getZ()) < 768.0 || dirtyFromPlayer;
-            } else if (chunkUpdates == PrioritizeChunkUpdates.PLAYER_AFFECTED) {
-                buildSync = dirtyFromPlayer;
+        // PORT-26.3: every body section compiles on the render thread, into the dispatcher's fixed builders, on Sodium
+        // (Sable's own dispatcher) and on the game's renderer alike. No worker thread ever holds a body section, so there
+        // is nothing in flight when a level change disposes the dispatcher, and nothing to cancel. Bodies are small; the
+        // cost is logged below when a frame's compiles are noticeable.
+        for (final SectionRenderDispatcher.RenderSection renderSection : this.dirtyRenderSections.keySet()) {
+            profiler.push("sublevel_build_sync");
+            syncSections++;
+            try {
+                renderSection.compileSync(renderRegionCache.createRegion(level, renderSection.getSectionNode()));
+            } catch (final RuntimeException e) {
+                dev.ryanhcode.sable.Sable.LOGGER.error("PORT-26.3: sub-level section compile failed at {}", renderSection.getRenderOrigin(), e);
+                dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelSectionDispatcher.drainAfterFailedSyncCompile(this.sectionRenderDispatcher);
             }
-
-            // PORT-26.3: on Sable's own dispatcher (the Sodium case) compile on the render thread: its background workers
-            // swallow exceptions and leak buffers, and sub-levels are small enough for a synchronous compile
-            if (dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelSectionDispatcher.isOwn(this.sectionRenderDispatcher)) {
-                buildSync = true;
-            }
-
-            if (buildSync) {
-                profiler.push("sublevel_build_near_sync");
-                syncSections++;
-                try {
-                    renderSection.compileSync(renderRegionCache.createRegion(level, renderSection.getSectionNode()));
-                } catch (final RuntimeException e) {
-                    dev.ryanhcode.sable.Sable.LOGGER.error("PORT-26.3: sub-level section compile failed at {}", renderSection.getRenderOrigin(), e);
-                }
-                profiler.pop();
-            } else {
-                profiler.push("sublevel_schedule_async_compile");
-                renderSection.compileAsync(renderRegionCache.createRegion(level, renderSection.getSectionNode()));
-                profiler.pop();
-            }
-
+            profiler.pop();
         }
         this.dirtyRenderSections.clear();
         if (syncSections > 0) {
@@ -286,6 +264,11 @@ public class VanillaChunkedSubLevelRenderData implements SubLevelRenderData {
     /**
      * @return all render sections this renderer stores
      */
+    /** The dispatcher this render data's sections belong to (fixed when it is made). */
+    public SectionRenderDispatcher sectionRenderDispatcher() {
+        return this.sectionRenderDispatcher;
+    }
+
     public ObjectList<SectionRenderDispatcher.RenderSection> allRenderSections() {
         return this.allRenderSections;
     }

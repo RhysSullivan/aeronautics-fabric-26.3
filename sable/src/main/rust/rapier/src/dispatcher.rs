@@ -1,8 +1,7 @@
 use crate::collider::LevelCollider;
 use log::info;
 use rapier3d::geometry::{ContactManifoldData, Shape};
-use rapier3d::glamx::{DVec3, IVec3, Pose3};
-use rapier3d::math::Vec3;
+use rapier3d::glamx::{DVec3, IVec3, DPose3};
 use rapier3d::parry::query::details::{NormalConstraints, contact_manifold_cuboid_cuboid_shapes};
 use rapier3d::parry::query::{
     ClosestPoints, Contact, ContactManifold, ContactManifoldsWorkspace, DefaultQueryDispatcher,
@@ -44,8 +43,8 @@ impl SableDispatcher {
     #[allow(unused)]
     fn get_local_block_bounds(mut local_aabb: Aabb, inflation: Real) -> (IVec3, IVec3) {
         // Inflate the aabb by the prediction distance
-        local_aabb.maxs += Vec3::splat(inflation);
-        local_aabb.mins -= Vec3::splat(inflation);
+        local_aabb.maxs += DVec3::splat(inflation);
+        local_aabb.mins -= DVec3::splat(inflation);
 
         let local_min = IVec3::new(
             local_aabb.mins.x.floor() as i32,
@@ -66,7 +65,7 @@ impl SableDispatcher {
 impl QueryDispatcher for SableDispatcher {
     fn intersection_test(
         &self,
-        _pos12: &Pose3,
+        _pos12: &DPose3,
         g1: &dyn Shape,
         g2: &dyn Shape,
     ) -> Result<bool, Unsupported> {
@@ -76,7 +75,7 @@ impl QueryDispatcher for SableDispatcher {
 
     fn distance(
         &self,
-        _pos12: &Pose3,
+        _pos12: &DPose3,
         g1: &dyn Shape,
         g2: &dyn Shape,
     ) -> Result<Real, Unsupported> {
@@ -86,7 +85,7 @@ impl QueryDispatcher for SableDispatcher {
 
     fn contact(
         &self,
-        _pos12: &Pose3,
+        _pos12: &DPose3,
         g1: &dyn Shape,
         g2: &dyn Shape,
         _prediction: Real,
@@ -97,7 +96,7 @@ impl QueryDispatcher for SableDispatcher {
 
     fn closest_points(
         &self,
-        _pos12: &Pose3,
+        _pos12: &DPose3,
         g1: &dyn Shape,
         g2: &dyn Shape,
         _max_dist: Real,
@@ -112,8 +111,8 @@ impl QueryDispatcher for SableDispatcher {
 
     fn cast_shapes(
         &self,
-        _pos12: &Pose3,
-        _local_vel12: Vec3,
+        _pos12: &DPose3,
+        _local_vel12: DVec3,
         _g1: &dyn Shape,
         _g2: &dyn Shape,
         _options: ShapeCastOptions,
@@ -141,7 +140,7 @@ where
 {
     fn contact_manifolds(
         &self,
-        pos12: &Pose3,
+        pos12: &DPose3,
         g1: &dyn Shape,
         g2: &dyn Shape,
         prediction: Real,
@@ -225,7 +224,7 @@ where
 
     fn contact_manifold_convex_convex(
         &self,
-        _pos12: &Pose3,
+        _pos12: &DPose3,
         _g1: &dyn Shape,
         _g2: &dyn Shape,
         _normal_constraints1: Option<&dyn NormalConstraints>,
@@ -246,7 +245,7 @@ where
 impl SableDispatcher {
     fn static_world_vs_collider<ContactData: Default + Copy>(
         &self,
-        pos12: &Pose3,
+        pos12: &DPose3,
         g1: &LevelCollider,
         g2: &dyn Shape,
         prediction: Real,
@@ -264,8 +263,8 @@ impl SableDispatcher {
         let mut local_aabb = g2.compute_aabb(pos12);
 
         let margin: Real = 0.1;
-        local_aabb.maxs += Vec3::splat(prediction + margin);
-        local_aabb.mins -= Vec3::splat(prediction + margin);
+        local_aabb.maxs += DVec3::splat(prediction + margin);
+        local_aabb.mins -= DVec3::splat(prediction + margin);
         let local_aabb =
             Self::adjust_aabb_for_body(local_aabb, collider_info, center_of_mass_1, prediction);
         let (local_min, local_max) =
@@ -325,9 +324,9 @@ impl SableDispatcher {
                         ) + DVec3::new(x as f64, y as f64, z as f64)
                             - center_of_mass_1;
                         let center =
-                            Vec3::new(center.x as Real, center.y as Real, center.z as Real);
+                            DVec3::new(center.x as Real, center.y as Real, center.z as Real);
 
-                        let half_extents = Vec3::new(
+                        let half_extents = DVec3::new(
                             (max_x - min_x) / 2.0,
                             (max_y - min_y) / 2.0,
                             (max_z - min_z) / 2.0,
@@ -341,7 +340,7 @@ impl SableDispatcher {
                             DefaultQueryDispatcher
                                 .contact_manifold_convex_convex(
                                     &block_isometry,
-                                    &rapier3d::parry::shape::Cuboid::new(Vec3::new(
+                                    &rapier3d::parry::shape::Cuboid::new(DVec3::new(
                                         half_extents.x,
                                         half_extents.y,
                                         half_extents.z,
@@ -358,7 +357,7 @@ impl SableDispatcher {
                                 .contact_manifold_convex_convex(
                                     &block_isometry.inverse(),
                                     g2,
-                                    &rapier3d::parry::shape::Cuboid::new(Vec3::new(
+                                    &rapier3d::parry::shape::Cuboid::new(DVec3::new(
                                         half_extents.x,
                                         half_extents.y,
                                         half_extents.z,
@@ -411,7 +410,7 @@ impl SableDispatcher {
                         }
 
                         for point in &mut manifolds[manifold_index].points {
-                            let diff = Vec3::new(center.x, center.y, center.z);
+                            let diff = DVec3::new(center.x, center.y, center.z);
                             match swap {
                                 true => point.local_p2 -= diff,
                                 false => point.local_p1 += diff,
@@ -431,7 +430,7 @@ impl SableDispatcher {
 
     fn world_vs_world<ContactData: Default + Copy>(
         &self,
-        pos12: &Pose3,
+        pos12: &DPose3,
         g1: &LevelCollider,
         g2: &LevelCollider,
         prediction: Real,
@@ -520,9 +519,9 @@ impl SableDispatcher {
                     ((min_z + max_z) / 2.0) as f64,
                 ) + DVec3::new(static_x as f64, static_y as f64, static_z as f64)
                     - center_of_mass_1;
-                let center = Vec3::new(center.x as Real, center.y as Real, center.z as Real);
+                let center = DVec3::new(center.x as Real, center.y as Real, center.z as Real);
 
-                let half_extents = Vec3::new(
+                let half_extents = DVec3::new(
                     (max_x - min_x) / 2.0,
                     (max_y - min_y) / 2.0,
                     (max_z - min_z) / 2.0,
@@ -579,13 +578,13 @@ impl SableDispatcher {
                             ((other_min_z + other_max_z) / 2.0) as f64,
                         ) + DVec3::new(other_bx as f64, other_by as f64, other_bz as f64)
                             - center_of_mass_2;
-                    let other_center = Vec3::new(
+                    let other_center = DVec3::new(
                         other_center.x as Real,
                         other_center.y as Real,
                         other_center.z as Real,
                     );
 
-                    let other_half_extents = Vec3::new(
+                    let other_half_extents = DVec3::new(
                         (other_max_x - other_min_x) / 2.0,
                         (other_max_y - other_min_y) / 2.0,
                         (other_max_z - other_min_z) / 2.0,
@@ -702,8 +701,8 @@ impl SableDispatcher {
             let local_bounds_max = body.local_bounds_max.unwrap();
 
             let body_aabb = Aabb::new(
-                (local_bounds_min.as_dvec3() - center_of_mass).as_vec3() - prediction,
-                (local_bounds_max.as_dvec3() - center_of_mass).as_vec3() - prediction,
+                (local_bounds_min.as_dvec3() - center_of_mass) - prediction,
+                (local_bounds_max.as_dvec3() - center_of_mass) - prediction,
             );
 
             local_aabb = local_aabb.intersection(&body_aabb).unwrap_or(local_aabb);
@@ -719,8 +718,8 @@ impl SableDispatcher {
         center_of_mass: DVec3,
         prediction: Real,
     ) -> (IVec3, IVec3) {
-        let mins = aabb.mins.as_dvec3() + center_of_mass - prediction as f64;
-        let maxs = aabb.maxs.as_dvec3() + center_of_mass + prediction as f64;
+        let mins = aabb.mins + center_of_mass - prediction as f64;
+        let maxs = aabb.maxs + center_of_mass + prediction as f64;
 
         let local_min = mins.floor().as_ivec3();
         let local_max = maxs.floor().as_ivec3();
@@ -757,8 +756,8 @@ fn is_interior_collision<ManifoldData: Default + Clone, ContactData: Default + C
     collider_info_2: &ActiveLevelColliderInfo,
     block_a: IVec3,
     block_b: IVec3,
-    center: Vec3,
-    other_center: Vec3,
+    center: DVec3,
+    other_center: DVec3,
     center_of_mass_1: DVec3,
     center_of_mass_2: DVec3,
     manifold: &mut ContactManifold<ManifoldData, ContactData>,
@@ -770,8 +769,8 @@ fn is_interior_collision<ManifoldData: Default + Clone, ContactData: Default + C
             || (collider_info_1.unwrap().local_bounds_min.unwrap()
                 != collider_info_1.unwrap().local_bounds_max.unwrap())
         {
-            let world_p1 = (point.local_p1 * 0.997 + center).as_dvec3() + center_of_mass_1;
-            let normal1 = manifold.local_n1.as_dvec3();
+            let world_p1 = (point.local_p1 * 0.997 + center) + center_of_mass_1;
+            let normal1 = manifold.local_n1;
 
             let displaced_p1 = world_p1 + normal1 * 0.01;
 
@@ -781,11 +780,11 @@ fn is_interior_collision<ManifoldData: Default + Clone, ContactData: Default + C
         }
 
         if collider_info_2.local_bounds_min.unwrap() != collider_info_2.local_bounds_max.unwrap() {
-            let normal2 = manifold.local_n2.as_dvec3();
+            let normal2 = manifold.local_n2;
 
             // we have to "pull in the points" a tiny bit incase they're outside of the block slightly off-normal
             let world_p2 = (point.local_p2 * INTERIOR_COLLISION_SCALE_FACTOR + other_center)
-                .as_dvec3()
+                
                 + center_of_mass_2;
 
             let displaced_p2 = world_p2 + normal2 * INTERIOR_COLLISION_CHECK_DISTANCE;

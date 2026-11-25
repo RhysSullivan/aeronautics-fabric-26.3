@@ -91,6 +91,35 @@ public final class SubLevelSectionDispatcher {
         }
     }
 
+    /**
+     * PORT-26.3: a synchronous compile into the dispatcher's fixed builder pack failed part way. Vertices already written
+     * but never built would become part of the next build of that layer, and a mesh built for an earlier layer before
+     * the failure is never closed, so its builder's result count never returns to 0 and the builder never rewinds (it
+     * grows with every later compile). Call on the render thread, outside a compile.
+     * <p>
+     * A sync compile closes every mesh it built before it returns (RebuildTask.doTask), so whatever the pack still holds
+     * belongs to the compile that threw. Each builder is reset the way {@code discardResults} resets it, without building
+     * from it first (the failure may be a layer too large to build, which would throw again): both offsets and the result
+     * count to 0, and the generation moved on, so the lost meshes are invalid and closing them later does nothing. A
+     * freed builder (generation -1) is left alone.
+     */
+    public static void drainAfterFailedSyncCompile(final SectionRenderDispatcher dispatcher) {
+        final net.minecraft.client.renderer.SectionBufferBuilderPack pack =
+                ((dev.ryanhcode.sable.mixin.sublevel_render.impl.vanilla.SectionRenderDispatcherAccessor) dispatcher).sable$fixedBuffers();
+        for (final net.minecraft.client.renderer.chunk.ChunkSectionLayer layer : net.minecraft.client.renderer.chunk.ChunkSectionLayer.values()) {
+            final dev.ryanhcode.sable.mixin.sublevel_render.impl.vanilla.ByteBufferBuilderAccessor buffer =
+                    (dev.ryanhcode.sable.mixin.sublevel_render.impl.vanilla.ByteBufferBuilderAccessor) pack.buffer(layer);
+            final int generation = buffer.sable$generation();
+            if (generation == -1) {
+                continue;
+            }
+            buffer.sable$setWriteOffset(0L);
+            buffer.sable$setNextResultOffset(0L);
+            buffer.sable$setResultCount(0);
+            buffer.sable$setGeneration(generation + 1 == -1 ? 0 : generation + 1);
+        }
+    }
+
     /** Keeps Sable's own dispatcher's camera current; call before scheduling compiles. */
     public static void setCameraIfOwn(final SectionRenderDispatcher dispatcher, final Vec3 camera) {
         if (dispatcher == own) {

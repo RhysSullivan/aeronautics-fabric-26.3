@@ -50,7 +50,6 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_new
     restitution: jdouble,
     is_fluid: jboolean,
     contact_events: JObject,
-    dynamic: jboolean,
 ) -> jint {
     let mut state = get_physics_state_mut();
 
@@ -89,7 +88,9 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_new
             restitution: restitution as Real,
             contact_events: global_ref,
             contact_method: global_method,
-            dynamic: dynamic > 0,
+            // PORT-26.3: Java never passed this argument (the JNI read past its five); no Java caller makes a dynamic
+            // voxel collider.
+            dynamic: false,
         }));
 
     next_index as jint
@@ -112,12 +113,12 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_add
 
     if let Some(data) = &mut state.voxel_collider_map.voxel_colliders[index as usize] {
         data.collision_boxes.push((
-            bounds[0] as f32,
-            bounds[1] as f32,
-            bounds[2] as f32,
-            bounds[3] as f32,
-            bounds[4] as f32,
-            bounds[5] as f32,
+            bounds[0] as Real,
+            bounds[1] as Real,
+            bounds[2] as Real,
+            bounds[3] as Real,
+            bounds[4] as Real,
+            bounds[5] as Real,
         ));
     }
 }

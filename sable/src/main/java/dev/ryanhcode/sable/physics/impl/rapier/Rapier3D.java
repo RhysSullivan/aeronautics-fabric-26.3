@@ -664,7 +664,7 @@ public final class Rapier3D {
      * @param ropeId a rope id
      */
     @ApiStatus.Internal
-    public static native long removeRope(final long sceneHandle, final long ropeId);
+    public static native void removeRope(final long sceneHandle, final long ropeId);
 
     @ApiStatus.Internal
     public static native void setRopeAttachment(final long sceneHandle, final long ropeId, final int subLevelId, final double x, final double y, final double z, final boolean end);

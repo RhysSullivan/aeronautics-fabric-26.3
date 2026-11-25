@@ -28,6 +28,8 @@
         "entity.entity_rotations_and_riding.ClientPacketListenerMixin",
         "entity.entity_rotations_and_riding.EntityRenderDispatcherMixin",
         "entity.entity_rotations_and_riding.LevelExtractorMixin",
+        "sublevel_render.impl.vanilla.ByteBufferBuilderAccessor",
+        "sublevel_render.impl.vanilla.SectionRenderDispatcherAccessor",
         "entity.entity_rotations_and_riding.LocalPlayerMixin",
         "entity.entity_aabb_lookup.ClientLevelMixin",
         "entity.entity_sublevel_collision.CameraMixin",

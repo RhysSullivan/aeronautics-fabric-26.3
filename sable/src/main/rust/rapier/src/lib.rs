@@ -16,7 +16,7 @@ mod voxel_collider;
 use jni::objects::{JClass, JDoubleArray, JIntArray};
 use jni::sys::{jboolean, jdouble, jint, jlong};
 use jni::{JNIEnv, JavaVM};
-use rapier3d::glamx::{DVec3, Quat};
+use rapier3d::glamx::{DVec3, DQuat};
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 
@@ -405,7 +405,7 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_ini
         ground_handle: None,
         reported_collisions,
         current_step_vm,
-        gravity: Vec3::new(x as Real, y as Real, z as Real),
+        gravity: DVec3::new(x as Real, y as Real, z as Real),
         universal_drag: universal_drag as Real,
         manifold_info_map,
     };
@@ -618,7 +618,7 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_cre
     let mut pose_arr: [jdouble; 7] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     env.get_double_array_region(pose, 0, &mut pose_arr).unwrap();
 
-    let quat = Quat::from_xyzw(
+    let quat = DQuat::from_xyzw(
         pose_arr[3] as Real,
         pose_arr[4] as Real,
         pose_arr[5] as Real,
@@ -627,7 +627,7 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_cre
 
     let mut rigid_body = RigidBodyBuilder::dynamic()
         .ccd_enabled(true)
-        .translation(Vec3::new(
+        .translation(DVec3::new(
             pose_arr[0] as Real,
             pose_arr[1] as Real,
             pose_arr[2] as Real,
@@ -1091,17 +1091,17 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_set
         .unwrap();
 
     let inertia_tensor = Mat3::from_cols(
-        Vec3::new(
+        DVec3::new(
             inertia_arr[0] as Real,
             inertia_arr[1] as Real,
             inertia_arr[2] as Real,
         ),
-        Vec3::new(
+        DVec3::new(
             inertia_arr[3] as Real,
             inertia_arr[4] as Real,
             inertia_arr[5] as Real,
         ),
-        Vec3::new(
+        DVec3::new(
             inertia_arr[6] as Real,
             inertia_arr[7] as Real,
             inertia_arr[8] as Real,
@@ -1115,7 +1115,7 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_set
         let rb = &mut sim_data.rigid_body_set[sable_data.rigid_bodies[&(id as LevelColliderID)]];
 
         rb.set_additional_mass_properties(
-            MassProperties::with_inertia_matrix(Vec3::ZERO, mass as Real, inertia_tensor.into()),
+            MassProperties::with_inertia_matrix(DVec3::ZERO, mass as Real, inertia_tensor.into()),
             true,
         );
     })
@@ -1145,8 +1145,8 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_tel
         let rb = &mut sim_data.rigid_body_set[sable_data.rigid_bodies[&(id as LevelColliderID)]];
 
         let mut pose = *rb.position();
-        pose.translation = Vec3::new(x as Real, y as Real, z as Real);
-        pose.rotation = Quat::from_xyzw(i as Real, j as Real, k as Real, r as Real);
+        pose.translation = DVec3::new(x as Real, y as Real, z as Real);
+        pose.rotation = DQuat::from_xyzw(i as Real, j as Real, k as Real, r as Real);
         rb.set_position(pose, true);
     })
 }
@@ -1195,11 +1195,11 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_add
         }
 
         rb.set_linvel(
-            rb.linvel() + Vec3::new(linear_x as Real, linear_y as Real, linear_z as Real),
+            rb.linvel() + DVec3::new(linear_x as Real, linear_y as Real, linear_z as Real),
             wake_up > 0,
         );
         rb.set_angvel(
-            rb.angvel() + Vec3::new(angular_x as Real, angular_y as Real, angular_z as Real),
+            rb.angvel() + DVec3::new(angular_x as Real, angular_y as Real, angular_z as Real),
             wake_up > 0,
         );
     })
@@ -1298,12 +1298,12 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_app
             return;
         }
 
-        let force: Vec3 = rb
+        let force: DVec3 = rb
             .rotation()
-            .mul_vec3(Vec3::new(fx as Real, fy as Real, fz as Real));
+            .mul_vec3(DVec3::new(fx as Real, fy as Real, fz as Real));
         let force_pos = rb
             .position()
-            .transform_point(Vec3::new(x as Real, y as Real, z as Real));
+            .transform_point(DVec3::new(x as Real, y as Real, z as Real));
 
         rb.apply_impulse(force, wake_up > 0);
 
@@ -1343,14 +1343,14 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_app
             return;
         }
 
-        let force: Vec3 = rb
+        let force: DVec3 = rb
             .rotation()
-            .mul_vec3(Vec3::new(fx as Real, fy as Real, fz as Real));
+            .mul_vec3(DVec3::new(fx as Real, fy as Real, fz as Real));
         rb.apply_impulse(force, wake_up > 0);
 
-        let torque: Vec3 = rb
+        let torque: DVec3 = rb
             .rotation()
-            .mul_vec3(Vec3::new(tx as Real, ty as Real, tz as Real));
+            .mul_vec3(DVec3::new(tx as Real, ty as Real, tz as Real));
         rb.apply_torque_impulse(torque, wake_up > 0);
     })
 }

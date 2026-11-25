@@ -1,3 +1,4 @@
+use rapier3d::glamx::DVec3;
 use crate::event_handler::SableEventHandler;
 use crate::hooks::SablePhysicsHooks;
 use crate::joints::SableJointSet;
@@ -12,7 +13,6 @@ use rapier3d::dynamics::{
 };
 use rapier3d::geometry::{ColliderSet, DefaultBroadPhase, NarrowPhase};
 use rapier3d::glamx::IVec3;
-use rapier3d::math::Vec3;
 use rapier3d::pipeline::PhysicsPipeline;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -103,7 +103,7 @@ pub struct PhysicsScene {
     pub ground_handle: Option<RigidBodyHandle>,
 
     /// The current gravity vector for all bodies. [m/s^2]
-    pub gravity: Vec3,
+    pub gravity: DVec3,
 
     /// Universal linear drag applied to all bodies
     pub universal_drag: Real,

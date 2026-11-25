@@ -12,8 +12,10 @@ colored.workspace = true
 log.workspace = true
 humantime.workspace = true
 
-rapier3d = { git = "https://github.com/ryanhcode/rapier", rev = "38e92f117590862481a53df6fc69a5d893e29186", features = [
-    "simd-nightly",
+# PORT-26.3: double precision (the fork's rapier3d-f64, imported under the same name). Bodies sit in Rapier at their world
+# coordinates; in single precision their movement was rounded to steps that grow with the distance from 0 (0.14 block
+# at 100,000 out), so slow movement was lost far out. The f64 crate has no SIMD features in this fork.
+rapier3d = { package = "rapier3d-f64", git = "https://github.com/ryanhcode/rapier", rev = "38e92f117590862481a53df6fc69a5d893e29186", features = [
     "parallel",
 ] }
 #rapier3d = { version = "0.26.1", features = [ "simd-stable" ] }

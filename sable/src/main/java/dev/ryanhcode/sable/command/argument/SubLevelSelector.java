@@ -113,9 +113,19 @@ public class SubLevelSelector {
         final Vector3d position = new Vector3d(source.getPosition().x, source.getPosition().y, source.getPosition().z);
         // every ordering (the default nearest and an explicit sort=) measures from the source projected out of any body
         // it is in, so a command run inside a body's plot orders bodies by where it is in the world; filters keep the
-        // source position as given
-        final Vec3 projected = Sable.HELPER.projectOutOfSubLevel(source.getLevel(), source.getPosition());
-        final Vector3d orderFrom = new Vector3d(projected.x, projected.y, projected.z);
+        // source position as given. Projected on first use: plain @e and @r never need it.
+        final java.util.function.Supplier<Vector3d> orderFrom = new java.util.function.Supplier<>() {
+            private Vector3d value;
+
+            @Override
+            public Vector3d get() {
+                if (this.value == null) {
+                    final Vec3 projected = Sable.HELPER.projectOutOfSubLevel(source.getLevel(), source.getPosition());
+                    this.value = new Vector3d(projected.x, projected.y, projected.z);
+                }
+                return this.value;
+            }
+        };
         this.modifiers.sort(
                 Comparator.comparingInt(a -> a.first().getFilterPriority().ordinal())
         );
@@ -140,7 +150,7 @@ public class SubLevelSelector {
                 ordered = true;
             }
             final boolean ordering = modifier.first().getFilterPriority() == SubLevelSelectorModifierType.FilterPriority.SORTING;
-            modifiedSubLevels = modifier.right().apply(modifiedSubLevels, ordering ? orderFrom : position);
+            modifiedSubLevels = modifier.right().apply(modifiedSubLevels, ordering ? orderFrom.get() : position);
         }
         if (chooses && !ordered && !userSort) {
             this.defaultOrder(modifiedSubLevels, orderFrom, level);
@@ -152,8 +162,9 @@ public class SubLevelSelector {
     }
 
     /** @n: nearest first, from the source projected out of any body it is in; @r: shuffled. */
-    private void defaultOrder(final List<ServerSubLevel> bodies, final Vector3d from, final ServerLevel level) {
+    private void defaultOrder(final List<ServerSubLevel> bodies, final java.util.function.Supplier<Vector3d> fromSupplier, final ServerLevel level) {
         if (this.type == SubLevelSelectorType.NEAREST) {
+            final Vector3d from = fromSupplier.get();
             bodies.sort(Comparator.comparingDouble(body -> body.logicalPose().position().distanceSquared(from)));
         } else {
             // PORT-NOTE(mc26.1): Level.random is protected now; use getRandom().

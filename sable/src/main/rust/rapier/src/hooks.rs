@@ -6,7 +6,7 @@ use marten::Real;
 use marten::level::VoxelColliderData;
 use rapier3d::geometry::{Collider, SolverContact};
 use rapier3d::glamx::DVec3;
-use rapier3d::math::{Pose, Vec3};
+use rapier3d::math::Pose;
 use rapier3d::pipeline::{ContactModificationContext, PhysicsHooks};
 use std::sync::{Arc, RwLock};
 
@@ -43,7 +43,7 @@ impl PhysicsHooks for SablePhysicsHooks {
                 continue;
             }
 
-            let mut tangent_velo = Vec3::ZERO;
+            let mut tangent_velo = DVec3::ZERO;
 
             let mut velocity = 0.0;
             let mut friction_multiplier = 1.0;
@@ -126,7 +126,7 @@ impl SablePhysicsHooks {
         contact: &SolverContact,
         collider_a: &Collider,
         level_collider_a: Option<&LevelCollider>,
-    ) -> Vec3 {
+    ) -> DVec3 {
         if let Some(level_collider_a) = level_collider_a
             && level_collider_a.id.is_some()
         {
@@ -139,11 +139,11 @@ impl SablePhysicsHooks {
                 let transform = collider_a.position();
                 return transform.transform_vector(fake_velo.velocity_at_point(
                     transform.inverse_transform_point(contact.point),
-                    Vec3::ZERO,
+                    DVec3::ZERO,
                 ));
             };
         }
-        Vec3::ZERO
+        DVec3::ZERO
     }
 
     fn handle_block_params(
@@ -151,11 +151,11 @@ impl SablePhysicsHooks {
         isometry: &Pose,
         _collider: &Collider,
         level_collider: Option<&LevelCollider>,
-        global_point: &Vec3,
+        global_point: &DVec3,
         velocity: Real,
         manifold_index: usize,
         body_a: bool,
-    ) -> (Vec3, bool, Real, Real) {
+    ) -> (DVec3, bool, Real, Real) {
         let state = crate::get_physics_state();
 
         let (tangent_velo, center_of_mass, skip_contact_events) = {
@@ -163,11 +163,11 @@ impl SablePhysicsHooks {
             let collider_info =
                 level_collider.and_then(|lc| lc.id.map(|id| &sable_data.level_colliders[&(id)]));
 
-            let mut tangent_velo = Vec3::ZERO;
+            let mut tangent_velo = DVec3::ZERO;
             if let Some(fake_velo) = collider_info.and_then(|info| info.fake_velocities) {
                 tangent_velo += isometry.transform_vector(fake_velo.velocity_at_point(
                     isometry.inverse_transform_point(*global_point),
-                    Vec3::ZERO,
+                    DVec3::ZERO,
                 ));
             }
 
@@ -198,7 +198,7 @@ impl SablePhysicsHooks {
         };
 
         let local = isometry.inverse_transform_point(*global_point);
-        let block_coord_d: DVec3 = local.as_dvec3() + center_of_mass;
+        let block_coord_d: DVec3 = local + center_of_mass;
 
         if block_id == 0 {
             return (tangent_velo, false, 1.0, 0.0);
@@ -260,7 +260,7 @@ impl SablePhysicsHooks {
         let mut velo_arr: [jdouble; 4] = [0.0, 0.0, 0.0, 0.0];
         env.get_double_array_region(arr, 0, &mut velo_arr).unwrap();
 
-        let velo = Vec3::new(
+        let velo = DVec3::new(
             velo_arr[0] as Real,
             velo_arr[1] as Real,
             velo_arr[2] as Real,

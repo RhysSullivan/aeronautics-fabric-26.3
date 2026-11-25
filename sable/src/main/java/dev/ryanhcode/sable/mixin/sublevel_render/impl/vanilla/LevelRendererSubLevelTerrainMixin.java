@@ -110,6 +110,10 @@ public abstract class LevelRendererSubLevelTerrainMixin {
             @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/LevelRenderer;prepareChunkRendersIndirect(Lorg/joml/Matrix4fc;Z)Lnet/minecraft/client/renderer/chunk/ChunkSectionsToRender;")})
     private ChunkSectionsToRender sable$prepareWithSubLevels(final LevelRenderer instance, final Matrix4fc baseModelView, final boolean respectTranslucentOrder,
                                                              final Operation<ChunkSectionsToRender> original) {
+        // PORT-26.3: bodies compile before vanilla prepares its terrain draws. A body compile that fills the staging buffer
+        // uploads at once on the game's dispatcher (SectionRenderDispatcher.addSectionBuffersToUberBuffer), and that upload
+        // releases world meshes replaced since the last frame; vanilla itself only uploads after the frame's draws ran.
+        this.sable$compileSubLevelTerrain(baseModelView);
         final ChunkSectionsToRender terrain = original.call(instance, baseModelView, respectTranslucentOrder);
         this.sable$prepareSubLevelTerrain(baseModelView);
         return terrain;
@@ -123,13 +127,10 @@ public abstract class LevelRendererSubLevelTerrainMixin {
         this.sable$terrainFog = terrainFog;
     }
 
+    /** Rebinds, compiles and (on Sable's own dispatcher) uploads the bodies' sections; before any terrain draw is prepared. */
     @Unique
-    private void sable$prepareSubLevelTerrain(final Matrix4fc baseModelView) {
-        this.sable$subLevelTerrain.clear();
-        this.sable$subLevelLightmaps.clear();
-        dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelLightmaps.beginFrame();
+    private void sable$compileSubLevelTerrain(final Matrix4fc baseModelView) {
         final boolean pathChanged = IrisHullPath.beginFrame(baseModelView);
-        final boolean irisPath = IrisHullPath.active();
         if (this.sable$level() == null) {
             return;
         }
@@ -137,6 +138,15 @@ public abstract class LevelRendererSubLevelTerrainMixin {
         final SectionRenderDispatcher dispatcher = dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelSectionDispatcher.get();
         if (container == null || dispatcher == null) {
             return;
+        }
+        // PORT-26.3: a body's sections belong to the dispatcher that was current when its render data was made. After a
+        // level change, bodies that arrived before the level renderer made its new dispatcher hold the old, disposed one:
+        // their sections would never upload and would keep the old level's meshes. Such render data is made again.
+        for (final ClientSubLevel subLevel : container.getAllSubLevels()) {
+            if (subLevel.getRenderData() instanceof final dev.ryanhcode.sable.sublevel.render.vanilla.VanillaChunkedSubLevelRenderData data
+                    && data.sectionRenderDispatcher() != dispatcher) {
+                subLevel.updateRenderData();
+            }
         }
         dev.ryanhcode.sable.sublevel.render.vanilla.LightProbeDump.maybeDump(this.sable$level(), container.getAllSubLevels()); // PORT-26.3: test-only
         if (pathChanged) {
@@ -154,7 +164,22 @@ public abstract class LevelRendererSubLevelTerrainMixin {
             subLevel.getRenderData().compileSections(updates, regionCache, mainCamera);
         }
         dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelSectionDispatcher.uploadIfOwn(dispatcher, mainCamera.position());
+    }
 
+    @Unique
+    private void sable$prepareSubLevelTerrain(final Matrix4fc baseModelView) {
+        this.sable$subLevelTerrain.clear();
+        this.sable$subLevelLightmaps.clear();
+        dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelLightmaps.beginFrame();
+        final boolean irisPath = IrisHullPath.active();
+        if (this.sable$level() == null) {
+            return;
+        }
+        final ClientSubLevelContainer container = SubLevelContainer.getContainer(this.sable$level());
+        final SectionRenderDispatcher dispatcher = dev.ryanhcode.sable.sublevel.render.vanilla.SubLevelSectionDispatcher.get();
+        if (container == null || dispatcher == null) {
+            return;
+        }
         if (this.sable$sectionInfos == null) {
             this.sable$sectionInfos = new DynamicGpuDataStorageMapped<>("Sable sub-level sections", DynamicGpuData.CHUNK_SECTION_UBO_SIZE, 128, 2);
         } else {
