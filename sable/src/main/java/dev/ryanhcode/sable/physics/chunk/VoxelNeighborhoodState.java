@@ -2,7 +2,6 @@ package dev.ryanhcode.sable.physics.chunk;
 
 import dev.ryanhcode.sable.api.block.BlockWithSubLevelCollisionCallback;
 import dev.ryanhcode.sable.util.LevelAccelerator;
-import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockGetter;
@@ -14,6 +13,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 
 public enum VoxelNeighborhoodState {
@@ -23,36 +23,48 @@ public enum VoxelNeighborhoodState {
     CORNER(0xeb6c0b),
     INTERIOR(0x000000);
 
+    // PORT-26.3: the two caches below were Int2BooleanOpenHashMaps keyed by state.hashCode() and filled with
+    // computeIfAbsent. That corrupts the map when it is entered again while computing (the shape lookup reads the level:
+    // a block entity or chunk load there runs other queued server work, which can reach these caches) or by two threads,
+    // and the next rehash throws ArrayIndexOutOfBoundsException (seen on a test server). They are now keyed by the state
+    // itself in a ConcurrentHashMap, and the value is computed outside any map operation and stored with putIfAbsent:
+    // safe under re-entry and under concurrent callers; the computed values are unchanged.
     public static BiFunction<BlockGetter, BlockState, Boolean> IS_SOLID_MEMOIZED = new BiFunction<>() {
-        private final Int2BooleanOpenHashMap cache = new Int2BooleanOpenHashMap();
+        private final ConcurrentHashMap<BlockState, Boolean> cache = new ConcurrentHashMap<>();
 
         @Override
         public Boolean apply(final BlockGetter blockGetter, final BlockState state) {
-            return this.cache.computeIfAbsent(state.hashCode(), x -> {
-                // TODO add the blockgetter and position as context
-                if (state.isAir())
-                    return false;
-
-                if (state.getBlock() instanceof MovingPistonBlock)
-                    return true;
-
-                return !state.getCollisionShape(blockGetter, BlockPos.ZERO).isEmpty();
-            });
+            final Boolean known = this.cache.get(state);
+            if (known != null) {
+                return known;
+            }
+            // TODO add the blockgetter and position as context
+            final boolean solid;
+            if (state.isAir()) {
+                solid = false;
+            } else if (state.getBlock() instanceof MovingPistonBlock) {
+                solid = true;
+            } else {
+                solid = !state.getCollisionShape(blockGetter, BlockPos.ZERO).isEmpty();
+            }
+            final Boolean raced = this.cache.putIfAbsent(state, solid);
+            return raced != null ? raced : solid;
         }
     };
 
     public static BiFunction<BlockGetter, BlockState, Boolean> IS_FULL_BLOCK = new BiFunction<>() {
-        private final Int2BooleanOpenHashMap cache = new Int2BooleanOpenHashMap();
+        private final ConcurrentHashMap<BlockState, Boolean> cache = new ConcurrentHashMap<>();
 
         @Override
         public Boolean apply(final BlockGetter blockGetter, final BlockState state) {
-            return this.cache.computeIfAbsent(state.hashCode(), x -> {
-                // TODO add the blockgetter and position as context
-                if (state.isAir())
-                    return false;
-
-                return state.isCollisionShapeFullBlock(blockGetter, BlockPos.ZERO);
-            });
+            final Boolean known = this.cache.get(state);
+            if (known != null) {
+                return known;
+            }
+            // TODO add the blockgetter and position as context
+            final boolean full = !state.isAir() && state.isCollisionShapeFullBlock(blockGetter, BlockPos.ZERO);
+            final Boolean raced = this.cache.putIfAbsent(state, full);
+            return raced != null ? raced : full;
         }
     };
 
